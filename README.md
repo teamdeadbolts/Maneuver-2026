@@ -4,13 +4,13 @@
 
 `maneuver-core` is the foundational framework that powers multi-year FRC scouting applications. It provides all the infrastructure you needâ€”offline-first PWA capabilities, data transfer, match validation, and moreâ€”while remaining completely game-agnostic.
 
-## í¾¯ What is this?
+## ï¿½ï¿½ï¿½ What is this?
 
 Every year, FRC teams face the same problem: rebuilding their scouting app from scratch for the new game. `maneuver-core` solves this by separating the **framework** (year-agnostic) from the **game logic** (year-specific).
 
 **You build once, adapt annually.**
 
-## í¿—ï¸ Architecture
+## ï¿½ï¿½ï¿½ï¸ Architecture
 
 ```
 â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -50,7 +50,7 @@ Every year, FRC teams face the same problem: rebuilding their scouting app from 
 - **Dark Mode**: Full light/dark theme support
 - **Responsive Design**: Works on tablets and phones
 
-## íº€ Quick Start
+## ï¿½ï¿½ï¿½ Quick Start
 
 ### Option 1: Use as Template (Recommended)
 
@@ -79,11 +79,12 @@ npm run dev
 npm run build
 ```
 
-## í³‹ What You Need to Implement
+## ï¿½ï¿½ï¿½ What You Need to Implement
 
 To create a scouting app for your game year, implement these 6 interfaces:
 
 ### 1. **GameConfig** - Metadata & Scoring Constants
+
 ```typescript
 export const gameConfig2025: GameConfig = {
   year: 2025,
@@ -97,16 +98,20 @@ export const gameConfig2025: GameConfig = {
 ```
 
 ### 2. **ScoutingEntry** - Data Structure
+
 ```typescript
 export interface ScoutingEntry2025 extends ScoutingEntryBase {
-  autoCoralPlaceL4Count: number;
-  teleopAlgaeNetCount: number;
-  endgameAttempt: 'none' | 'park' | 'shallow' | 'deep';
-  // ... your game-specific fields
+  gameData: {
+    autoCoralPlaceL4Count: number;
+    teleopAlgaeNetCount: number;
+    endgameAttempt: 'none' | 'park' | 'shallow' | 'deep';
+    // ... your game-specific fields
+  };
 }
 ```
 
 ### 3. **ScoringCalculations** - Point Calculations
+
 ```typescript
 export const scoring2025: ScoringCalculations = {
   calculateAutoPoints(entry) { /* ... */ },
@@ -117,6 +122,7 @@ export const scoring2025: ScoringCalculations = {
 ```
 
 ### 4. **ValidationRules** - Match Validation
+
 ```typescript
 export const validation2025: ValidationRules = {
   getDataCategories() { /* define categories */ },
@@ -127,6 +133,7 @@ export const validation2025: ValidationRules = {
 ```
 
 ### 5. **StrategyAnalysis** - Statistics
+
 ```typescript
 export const analysis2025: StrategyAnalysis = {
   calculateBasicStats(entries) {
@@ -136,25 +143,25 @@ export const analysis2025: StrategyAnalysis = {
 ```
 
 ### 6. **UIComponents** - Game Screens
+
 ```typescript
 export const components2025: GameUIComponents = {
-  GameStartScreen,   // Starting position
-  AutoScreen,        // Autonomous scouting
-  ScoringScreen,     // Teleop scouting
-  EndgameScreen,     // Endgame scouting
-  ResultsScreen,     // Match summary
-  TeamStatsDisplay,  // Team statistics page
+  GameStartScreen,      // Match setup (team, match, alliance)
+  AutoStartScreen,      // Starting position (optional)
+  AutoScoringScreen,    // Autonomous scouting
+  TeleopScoringScreen,  // Teleop scouting
+  EndgameScreen,        // Endgame scouting (optional)
 };
 ```
 
-## í³š Documentation
+## ï¿½ï¿½ï¿½ Documentation
 
 - **[Integration Guide](docs/INTEGRATION_GUIDE.md)** - Step-by-step implementation guide
 - **[Framework Design](docs/FRAMEWORK_DESIGN.md)** - Interface specifications and contracts
 - **[Architecture Strategy](docs/ARCHITECTURE_STRATEGY.md)** - Multi-year vision and decision framework
 - **[API Reference](docs/API_REFERENCE.md)** - Complete API documentation
 
-## í» ï¸ Tech Stack
+## ï¿½ï¿½ï¿½ï¸ Tech Stack
 
 - **Frontend**: React 18 + TypeScript + Vite
 - **Styling**: Tailwind CSS + shadcn/ui components
@@ -164,7 +171,7 @@ export const components2025: GameUIComponents = {
 - **API**: The Blue Alliance (TBA) for match data
 - **Deployment**: Netlify/Vercel (static hosting)
 
-## í¾“ For Teams
+## ï¿½ï¿½ï¿½ For Teams
 
 ### Why Use maneuver-core?
 
@@ -183,7 +190,7 @@ When the new game is announced:
 3. Build your game-specific UI components
 4. Test and deploy
 
-## í´ Contributing
+## ï¿½ï¿½ï¿½ Contributing
 
 Contributions to the core framework are welcome! Please:
 
@@ -194,24 +201,25 @@ Contributions to the core framework are welcome! Please:
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## í³„ License
+## ï¿½ï¿½ï¿½ License
 
 MIT License - feel free to use, modify, and distribute.
 
-## í¹ Credits
+## ï¿½ï¿½ï¿½ Credits
 
 Developed by **Andy Nguyen (ShinyShips) - FRC Team 3314 Alumni and Strategy Mentor)** for the FRC community.
 
 Special thanks to:
+
 - The Blue Alliance for their excellent API
 - All the open-source libraries that make this possible
 - FRC teams who provided feedback and testing
 
-## í³ Support
+## ï¿½ï¿½ï¿½ Support
 
 - **Issues**: [GitHub Issues](https://github.com/ShinyShips/maneuver-core/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/ShinyShips/maneuver-core/discussions)
 
 ---
 
-**Built for extensibility, designed for simplicity.** íº€
+**Built for extensibility, designed for simplicity.** ï¿½ï¿½ï¿½

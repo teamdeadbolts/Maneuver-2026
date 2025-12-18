@@ -202,7 +202,7 @@ import { db } from '@/core/db/database';
 
 const entries = await db.scoutingEntries
   .where('teamNumber')
-  .equals(10143)
+  .equals(3314)
   .toArray();
 ```
 
