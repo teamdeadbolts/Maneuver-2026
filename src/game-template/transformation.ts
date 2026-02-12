@@ -23,24 +23,24 @@ import { toggles, getActionKeys } from "./game-schema";
  */
 function generateActionDefaults(phase: 'auto' | 'teleop'): Record<string, number> {
   const defaults: Record<string, number> = {};
-  
+
   // Actions tracked in both phases
   const commonActions = ['fuelScored', 'fuelPassed'];
-  
+
   // Auto-only actions
   const autoOnlyActions = ['depotCollect', 'outpostCollect', 'foulCommitted'];
-  
+
   // Teleop-only actions
   const teleopOnlyActions: string[] = ['steal'];
-  
-  const actionsToInclude = phase === 'auto' 
+
+  const actionsToInclude = phase === 'auto'
     ? [...commonActions, ...autoOnlyActions]
     : [...commonActions, ...teleopOnlyActions];
-  
+
   actionsToInclude.forEach(key => {
     defaults[`${key}Count`] = 0;
   });
-  
+
   return defaults;
 }
 
@@ -114,11 +114,11 @@ export const gameDataTransformation: DataTransformation = {
     // =========================================================================
     // Broken Down Time Tracking (from localStorage)
     // =========================================================================
-    
+
     // Read broken down time from localStorage (set by field maps)
     const autoBrokenDownTime = localStorage.getItem('autoBrokenDownTime');
     const teleopBrokenDownTime = localStorage.getItem('teleopBrokenDownTime');
-    
+
     if (autoBrokenDownTime) {
       const duration = parseInt(autoBrokenDownTime, 10);
       if (duration > 0) {
@@ -129,7 +129,7 @@ export const gameDataTransformation: DataTransformation = {
       localStorage.removeItem('autoBrokenDownTime');
       localStorage.removeItem('autoBrokenDownStart');
     }
-    
+
     if (teleopBrokenDownTime) {
       const duration = parseInt(teleopBrokenDownTime, 10);
       if (duration > 0) {
@@ -315,7 +315,6 @@ export default gameDataTransformation;
 
 /**
  * Game-specific gameData fields to exclude from CSV export.
- * Override in game-year implementations to exclude visualization/replay data.
- * Default: no fields excluded.
+ * These are large visualization/replay arrays not useful for spreadsheet analysis.
  */
-export const csvExcludedFields: string[] = [];
+export const csvExcludedFields: string[] = ['auto.autoPath', 'teleop.teleopPath'];
