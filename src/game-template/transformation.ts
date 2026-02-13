@@ -1,7 +1,7 @@
 /**
  * Game-Specific Data Transformation - 2026 REBUILT
  * 
- * Transforms PathWaypoint data from AutoPathTracker into counter fields.
+ * Transforms PathWaypoint data from AutoFieldMap into counter fields.
  * Full path is stored for visualization replay.
  * 
  * 2026 Path-Based Tracking:
@@ -25,7 +25,7 @@ function generateActionDefaults(phase: 'auto' | 'teleop'): Record<string, number
   const defaults: Record<string, number> = {};
 
   // Actions tracked in both phases
-  const commonActions = ['fuelScored', 'fuelPassed'];
+  const commonActions = ['fuelScored', 'fuelPassed', 'trenchStuck', 'bumpStuck', 'brokenDown'];
 
   // Auto-only actions
   const autoOnlyActions = ['depotCollect', 'outpostCollect', 'foulCommitted'];
@@ -39,6 +39,10 @@ function generateActionDefaults(phase: 'auto' | 'teleop'): Record<string, number
 
   actionsToInclude.forEach(key => {
     defaults[`${key}Count`] = 0;
+    // Initialize duration for actions that track time
+    if (key.includes('Stuck') || key === 'brokenDown') {
+      defaults[`${key}Duration`] = 0;
+    }
   });
 
   return defaults;
@@ -142,7 +146,7 @@ export const gameDataTransformation: DataTransformation = {
     }
 
     // =========================================================================
-    // Path-Based Tracking (AutoPathTracker waypoints)
+    // Path-Based Tracking (AutoFieldMap waypoints)
     // =========================================================================
 
     // Store full path for visualization

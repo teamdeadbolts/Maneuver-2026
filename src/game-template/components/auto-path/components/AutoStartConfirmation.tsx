@@ -2,7 +2,7 @@
  * AutoStartConfirmation Component
  * 
  * Confirmation popup for start position selection.
- * Extracted from AutoPathTracker for better organization.
+ * Extracted from AutoFieldMap for better organization.
  */
 
 import { Button } from '@/core/components/ui/button';

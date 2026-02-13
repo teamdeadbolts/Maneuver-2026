@@ -94,7 +94,7 @@ export type ZoneKey = keyof typeof zones;
 // =============================================================================
 
 /**
- * Actions tracked from AutoPathTracker waypoints.
+ * Actions tracked from AutoFieldMap waypoints.
  * Each action has a pathType that maps to PathWaypoint.type.
  */
 export const actions = {
@@ -223,7 +223,7 @@ export const toggles = {
             description: "Stole fuel from opponent zone",
             group: "roleActive",
         },
-        
+
         // Inactive Phase Role toggles (multi-select, group: "roleInactive")
         roleInactiveCleanUp: {
             label: "Clean Up",
@@ -250,7 +250,7 @@ export const toggles = {
             description: "Stole fuel from opponent zone",
             group: "roleInactive",
         },
-        
+
         // Passing zones (multi-select, group: "passingZone")
         passedToAlliance: {
             label: "Alliance Zone",
@@ -262,7 +262,7 @@ export const toggles = {
             description: "Passed fuel to neutral zone",
             group: "passingZone",
         },
-        
+
         // Qualitative accuracy (mutually exclusive, group: "accuracy")
         accuracyAll: {
             label: "All (>90%)",
@@ -289,7 +289,7 @@ export const toggles = {
             description: "Missed most shots",
             group: "accuracy",
         },
-        
+
         // Corral usage (independent)
         usedCorral: {
             label: "Used Corral",
@@ -330,12 +330,16 @@ export const strategyColumns = {
     auto: {
         "rawValues.autoFuel": { label: "Auto Fuel", visible: true, numeric: true },
         "autoClimbRate": { label: "Auto Climb %", visible: true, numeric: true, percentage: true },
+        "rawValues.autoTrenchStuckDuration": { label: "Auto Trench Stuck", visible: false, numeric: true },
+        "rawValues.autoBumpStuckDuration": { label: "Auto Bump Stuck", visible: false, numeric: true },
     },
     // Teleop stats (use rawValues for user-selectable aggregation)
     teleop: {
         "rawValues.teleopFuel": { label: "Teleop Fuel", visible: true, numeric: true },
         "rawValues.teleopFuelPassed": { label: "Teleop Passed", visible: false, numeric: true },
         "teleop.defenseRate": { label: "Defense %", visible: false, numeric: true, percentage: true },
+        "rawValues.teleopTrenchStuckDuration": { label: "Trench Stuck (s)", visible: true, numeric: true },
+        "rawValues.teleopBumpStuckDuration": { label: "Bump Stuck (s)", visible: true, numeric: true },
     },
     // Endgame stats (climb rates are percentages, keep as-is)
     endgame: {

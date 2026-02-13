@@ -11,6 +11,7 @@
 import type { ScoutingEntry } from "@/game-template/scoring";
 import type { TeamStats } from "@/core/types/team-stats";
 import { scoringCalculations } from "./scoring";
+import { millisecondsToSeconds } from "./duration";
 
 // Helper functions
 const sum = <T>(arr: T[], fn: (item: T) => number): number =>
@@ -182,11 +183,11 @@ export const calculateTeamStats = (teamMatches: ScoutingEntry[]): Omit<TeamStats
         endgamePoints: teamMatches.map(m =>
             scoringCalculations.calculateEndgamePoints({ gameData: m.gameData } as any)
         ),
-        
+
         // Fuel (per match)
         autoFuel: teamMatches.map(m => val(m.gameData?.auto?.fuelScoredCount)),
         teleopFuel: teamMatches.map(m => val(m.gameData?.teleop?.fuelScoredCount)),
-        totalFuel: teamMatches.map(m => 
+        totalFuel: teamMatches.map(m =>
             val(m.gameData?.auto?.fuelScoredCount) + val(m.gameData?.teleop?.fuelScoredCount)
         ),
         autoFuelPassed: teamMatches.map(m => val(m.gameData?.auto?.fuelPassedCount)),
@@ -194,16 +195,16 @@ export const calculateTeamStats = (teamMatches: ScoutingEntry[]): Omit<TeamStats
         totalFuelPassed: teamMatches.map(m =>
             val(m.gameData?.auto?.fuelPassedCount) + val(m.gameData?.teleop?.fuelPassedCount)
         ),
-        
+
         // Climb (boolean per match - 1 if climbed, 0 if not)
         climbL1: teamMatches.map(m => m.gameData?.endgame?.climbL1 === true ? 1 : 0),
         climbL2: teamMatches.map(m => m.gameData?.endgame?.climbL2 === true ? 1 : 0),
         climbL3: teamMatches.map(m => m.gameData?.endgame?.climbL3 === true ? 1 : 0),
-        climbAny: teamMatches.map(m => 
+        climbAny: teamMatches.map(m =>
             (m.gameData?.endgame?.climbL1 || m.gameData?.endgame?.climbL2 || m.gameData?.endgame?.climbL3) ? 1 : 0
         ),
         autoClimb: teamMatches.map(m => m.gameData?.auto?.autoClimbL1 === true ? 1 : 0),
-        
+
         // Defense & Steals (per match)
         steals: teamMatches.map(m => val(m.gameData?.teleop?.stealCount)),
         defenseActions: teamMatches.map(m =>
@@ -211,6 +212,12 @@ export const calculateTeamStats = (teamMatches: ScoutingEntry[]): Omit<TeamStats
             val(m.gameData?.teleop?.defenseNeutralCount) +
             val(m.gameData?.teleop?.defenseOpponentCount)
         ),
+
+        // Stuck Durations (per match, in seconds)
+        autoTrenchStuckDuration: teamMatches.map(m => millisecondsToSeconds(val(m.gameData?.auto?.trenchStuckDuration))),
+        autoBumpStuckDuration: teamMatches.map(m => millisecondsToSeconds(val(m.gameData?.auto?.bumpStuckDuration))),
+        teleopTrenchStuckDuration: teamMatches.map(m => millisecondsToSeconds(val(m.gameData?.teleop?.trenchStuckDuration))),
+        teleopBumpStuckDuration: teamMatches.map(m => millisecondsToSeconds(val(m.gameData?.teleop?.bumpStuckDuration))),
     };
 
     // ============================================================================

@@ -114,10 +114,10 @@ export function FieldButton({
                             <div className="absolute inset-0 border-2 border-blue-400 rounded-xl animate-pulse" />
                         )}
                         {count !== undefined && count > 0 && (
-                            <div 
+                            <div
                                 className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full font-bold flex items-center justify-center shadow-lg"
-                                style={{ 
-                                    width: `${buttonSize * 0.35}px`, 
+                                style={{
+                                    width: `${buttonSize * 0.35}px`,
                                     height: `${buttonSize * 0.35}px`,
                                     fontSize: `${buttonSize * 0.2}px`
                                 }}

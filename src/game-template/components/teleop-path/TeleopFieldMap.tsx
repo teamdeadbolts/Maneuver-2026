@@ -38,6 +38,8 @@ import {
 
 // Context hooks
 import { TeleopPathProvider, useTeleopScoring } from '@/game-template/contexts';
+import { formatDurationSecondsLabel } from '@/game-template/duration';
+import { TELEOP_PHASE_DURATION_MS } from '@/game-template/constants';
 
 // Local sub-components
 import { TeleopActionLog } from './components/TeleopActionLog';
@@ -57,7 +59,7 @@ export interface TeleopFieldMapProps {
     matchType?: 'qm' | 'sf' | 'f';
     teamNumber?: string | number;
     onBack?: () => void;
-    onProceed?: () => void;
+    onProceed?: (finalActions?: PathWaypoint[]) => void;
 }
 
 // =============================================================================
@@ -307,7 +309,7 @@ function TeleopFieldMapContent() {
             if (isCurrentlyStuck) {
                 // Clearing stuck state - record duration
                 const startTime = stuckStarts[elementKey]!;
-                const duration = Date.now() - startTime;
+                const duration = Math.min(Date.now() - startTime, TELEOP_PHASE_DURATION_MS);
 
                 onAddAction({
                     id: generateId(),
@@ -477,13 +479,43 @@ function TeleopFieldMapContent() {
                 onUndo={handleUndoWrapper}
                 onBack={onBack}
                 onProceed={() => {
+                    // Capture any active stuck timers before proceeding
+                    const stuckEntries = Object.entries(stuckStarts);
+                    const finalActions = [...actions];
+                    const now = Date.now();
+
+                    for (const [elementKey, startTime] of stuckEntries) {
+                        if (startTime && typeof startTime === 'number') {
+                            const obstacleType = elementKey.includes('trench') ? 'trench' : 'bump';
+                            const element = FIELD_ELEMENTS[elementKey];
+                            const duration = Math.min(now - startTime, TELEOP_PHASE_DURATION_MS);
+
+                            const unstuckWaypoint: PathWaypoint = {
+                                id: generateId(),
+                                type: 'unstuck',
+                                action: `unstuck-${obstacleType}`,
+                                position: element ? { x: element.x, y: element.y } : { x: 0, y: 0 },
+                                timestamp: now,
+                                duration,
+                                obstacleType: obstacleType as 'trench' | 'bump',
+                                amountLabel: formatDurationSecondsLabel(duration),
+                            };
+
+                            finalActions.push(unstuckWaypoint);
+                        }
+                    }
+
+                    if (stuckEntries.length > 0) {
+                        setStuckStarts({});
+                    }
+
                     // Capture any active broken down time before proceeding
                     if (brokenDownStart) {
                         const duration = Date.now() - brokenDownStart;
                         const finalTotal = totalBrokenDownTime + duration;
                         localStorage.setItem('teleopBrokenDownTime', String(finalTotal));
                     }
-                    if (onProceed) onProceed();
+                    if (onProceed) onProceed(finalActions);
                 }}
                 toggleFieldOrientation={toggleFieldOrientation}
                 isBrokenDown={isBrokenDown}

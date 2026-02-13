@@ -42,6 +42,8 @@ import {
 // Context hooks
 import { AutoPathProvider, useAutoScoring } from "@/game-template/contexts";
 import { actions as schemaActions } from "@/game-template/game-schema";
+import { formatDurationSecondsLabel } from "@/game-template/duration";
+import { AUTO_PHASE_DURATION_MS } from "@/game-template/constants";
 
 // Local sub-components
 import { AutoActionLog } from "./components/AutoActionLog";
@@ -70,7 +72,7 @@ export interface AutoFieldMapProps {
     matchType?: 'qm' | 'sf' | 'f';
     teamNumber?: string | number;
     onBack?: () => void;
-    onProceed?: () => void;
+    onProceed?: (finalActions?: PathWaypoint[]) => void;
 }
 
 // =============================================================================
@@ -164,7 +166,7 @@ function AutoFieldMapContent() {
     const [currentZone, setCurrentZone] = useState<ZoneType>('allianceZone');
     const [robotCapacity, setRobotCapacity] = useState<number | undefined>();
     const [actionLogOpen, setActionLogOpen] = useState(false);
-    
+
     // Broken down state - persisted with localStorage
     const [brokenDownStart, setBrokenDownStart] = useState<number | null>(() => {
         const saved = localStorage.getItem('autoBrokenDownStart');
@@ -237,38 +239,38 @@ function AutoFieldMapContent() {
         // Find matching action in schema
         const schemaAction = Object.entries(schemaActions).find(([key, def]) => {
             if (def.pathType !== action.type) return false;
-            
+
             // For climb, match autoClimb
             if (action.type === 'climb' && action.action === 'climb-success') {
                 return key === 'autoClimb';
             }
-            
+
             // For collect, match by pathAction
             if (action.type === 'collect' && 'pathAction' in def && def.pathAction) {
                 return def.pathAction === action.action;
             }
-            
+
             // For score, count fuel points
             if (action.type === 'score') {
                 return key === 'fuelScored';
             }
-            
+
             return true;
         });
-        
+
         if (schemaAction) {
             const [, def] = schemaAction;
             const points = def.points.auto || 0;
-            
+
             // For fuel scoring, multiply by fuel count
             if (action.type === 'score' && action.fuelDelta) {
                 return sum + (points * Math.abs(action.fuelDelta));
             }
-            
+
             // For other actions, just add the points
             return sum + points;
         }
-        
+
         return sum;
     }, 0);
 
@@ -322,11 +324,20 @@ function AutoFieldMapContent() {
         // 1. Handle Persistent Stuck Resolution
         if (stuckStarts[elementKey]) {
             const startTime = stuckStarts[elementKey]!;
-            const type = elementKey.includes('trench') ? 'trench' : 'bump';
+            const obstacleType = elementKey.includes('trench') ? 'trench' : 'bump';
+            const stuckDuration = Math.min(Date.now() - startTime, AUTO_PHASE_DURATION_MS);
 
-            // Include duration in the waypoint for analytics
-            const stuckDuration = Date.now() - startTime;
-            addWaypoint('traversal', `${type}-stuck`, { x: element.x, y: element.y }, undefined, `${Math.round(stuckDuration / 1000)}s`);
+            // Create unstuck waypoint with duration for analytics (matches teleop pattern)
+            onAddAction({
+                id: generateId(),
+                type: 'unstuck',
+                action: `unstuck-${obstacleType}`,
+                position: { x: element.x, y: element.y },
+                timestamp: Date.now(),
+                duration: stuckDuration,
+                obstacleType: obstacleType as 'trench' | 'bump',
+                amountLabel: formatDurationSecondsLabel(stuckDuration),
+            });
 
             setStuckStarts(prev => {
                 const next = { ...prev };
@@ -519,13 +530,46 @@ function AutoFieldMapContent() {
                 onUndo={handleUndo}
                 onBack={onBack}
                 onProceed={() => {
+                    // Capture any active stuck timers before proceeding
+                    const stuckEntries = Object.entries(stuckStarts);
+                    const finalActions = [...actions];
+                    const now = Date.now();
+                    const nextStuckStarts: Record<string, number> = {};
+
+                    for (const [elementKey, startTime] of stuckEntries) {
+                        if (startTime && typeof startTime === 'number') {
+                            const obstacleType = elementKey.includes('trench') ? 'trench' : 'bump';
+                            const element = FIELD_ELEMENTS[elementKey as keyof typeof FIELD_ELEMENTS];
+                            const duration = Math.min(now - startTime, AUTO_PHASE_DURATION_MS);
+
+                            const unstuckWaypoint: PathWaypoint = {
+                                id: generateId(),
+                                type: 'unstuck',
+                                action: `unstuck-${obstacleType}`,
+                                position: element ? { x: element.x, y: element.y } : { x: 0, y: 0 },
+                                timestamp: now,
+                                duration,
+                                obstacleType: obstacleType as 'trench' | 'bump',
+                                amountLabel: formatDurationSecondsLabel(duration),
+                            };
+
+                            finalActions.push(unstuckWaypoint);
+                            // Carry stuck state into teleop by resetting timer at phase boundary
+                            nextStuckStarts[elementKey] = now;
+                        }
+                    }
+
+                    if (stuckEntries.length > 0) {
+                        setStuckStarts(nextStuckStarts);
+                    }
+
                     // Capture any active broken down time before proceeding
                     if (brokenDownStart) {
                         const duration = Date.now() - brokenDownStart;
                         const finalTotal = totalBrokenDownTime + duration;
                         localStorage.setItem('autoBrokenDownTime', String(finalTotal));
                     }
-                    if (onProceed) onProceed();
+                    if (onProceed) onProceed(finalActions);
                 }}
                 toggleFieldOrientation={toggleFieldOrientation}
                 isBrokenDown={isBrokenDown}

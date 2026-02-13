@@ -6,6 +6,9 @@ import { Badge } from "@/core/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { ScoringSections, StatusToggles } from "@/game-template/components";
+import { FIELD_ELEMENTS } from "@/game-template/components/field-map";
+import { formatDurationSecondsLabel } from "@/game-template/duration";
+import { AUTO_PHASE_DURATION_MS } from "@/game-template/constants";
 import { useWorkflowNavigation } from "@/core/hooks/useWorkflowNavigation";
 import { submitMatchData } from "@/core/lib/submitMatch";
 import { useGame } from "@/core/contexts/GameContext";
@@ -97,7 +100,67 @@ const AutoScoringPage = () => {
     });
   };
 
-  const handleProceed = async () => {
+  const handleProceed = async (finalActions?: any[]) => {
+    let actionsToUse = finalActions || scoringActions;
+
+    // Capture any active stuck timers if they wasn't captured by the field map's internal onProceed
+    if (!finalActions) {
+      const savedStuck = localStorage.getItem('teleopStuckStarts');
+      if (savedStuck) {
+        const stuckStarts = JSON.parse(savedStuck);
+        const stuckEntries = Object.entries(stuckStarts);
+        const now = Date.now();
+        const nextActions = [...actionsToUse];
+        const nextStuckStarts: Record<string, number> = { ...stuckStarts };
+        let addedAny = false;
+
+        for (const [elementKey, startTime] of stuckEntries) {
+          if (startTime && typeof startTime === 'number') {
+            const obstacleType = elementKey.includes('trench') ? 'trench' : 'bump';
+            const element = FIELD_ELEMENTS[elementKey as keyof typeof FIELD_ELEMENTS];
+            const duration = Math.min(now - startTime, AUTO_PHASE_DURATION_MS);
+
+            const unstuckWaypoint = {
+              id: `${now}-${Math.random().toString(36).substr(2, 9)}`,
+              type: 'unstuck',
+              action: `unstuck-${obstacleType}`,
+              position: element ? { x: element.x, y: element.y } : { x: 0, y: 0 },
+              timestamp: now,
+              duration,
+              obstacleType,
+              amountLabel: formatDurationSecondsLabel(duration)
+            };
+            nextActions.push(unstuckWaypoint);
+            // Persistent stuck: reset start time to 'now' for Teleop tracking
+            nextStuckStarts[elementKey] = now;
+            addedAny = true;
+          }
+        }
+
+        if (addedAny) {
+          actionsToUse = nextActions;
+          localStorage.setItem('teleopStuckStarts', JSON.stringify(nextStuckStarts));
+          setScoringActions(nextActions);
+        }
+      }
+
+      // Also capture active broken down time
+      const autoBrokenDownStart = localStorage.getItem('autoBrokenDownStart');
+      if (autoBrokenDownStart) {
+        const startTime = parseInt(autoBrokenDownStart, 10);
+        const duration = Date.now() - startTime;
+        const currentTotal = parseInt(localStorage.getItem('autoBrokenDownTime') || '0', 10);
+        localStorage.setItem('autoBrokenDownTime', String(currentTotal + duration));
+        // Reset for teleop
+        localStorage.setItem('teleopBrokenDownStart', String(Date.now()));
+      }
+    }
+
+    if (finalActions) {
+      setScoringActions(actionsToUse);
+    }
+    localStorage.setItem("autoStateStack", JSON.stringify(actionsToUse));
+
     if (isSubmitPage) {
       // This is the last page - submit match data
       const success = await submitMatchData({
@@ -111,7 +174,7 @@ const AutoScoringPage = () => {
       navigate(nextRoute, {
         state: {
           inputs: states?.inputs,
-          autoStateStack: scoringActions,
+          autoStateStack: actionsToUse,
           autoRobotStatus: robotStatus,
           ...(states?.rescout && { rescout: states.rescout }),
         },
@@ -153,7 +216,7 @@ const AutoScoringPage = () => {
               Back
             </Button>
             <Button
-              onClick={handleProceed}
+              onClick={() => handleProceed()}
               className={`flex-2 h-12 text-lg font-semibold ${isSubmitPage ? 'bg-green-600 hover:bg-green-700' : ''}`}
             >
               {isSubmitPage ? 'Submit Match Data' : 'Continue to Teleop'}
@@ -261,7 +324,7 @@ const AutoScoringPage = () => {
                 Back
               </Button>
               <Button
-                onClick={handleProceed}
+                onClick={() => handleProceed()}
                 className={`flex-2 h-12 text-lg font-semibold ${isSubmitPage ? 'bg-green-600 hover:bg-green-700' : ''}`}
               >
                 {isSubmitPage ? 'Submit Match Data' : 'Continue to Teleop'}
