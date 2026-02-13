@@ -264,12 +264,6 @@ export const exportPitScoutingToCSV = async (excludedFields: string[] = []): Pro
   // Collect all unique gameData keys across all entries
   const gameDataKeys = new Set<string>();
 
-  const shouldExcludeField = (fieldPath: string): boolean => {
-    return excludedFields.some(excluded =>
-      fieldPath === excluded || fieldPath.startsWith(`${excluded}.`)
-    );
-  };
-
   data.entries.forEach(entry => {
     if (entry.gameData && typeof entry.gameData === 'object') {
       // Recursively flatten nested objects with dot notation
