@@ -2,7 +2,7 @@
 // This file contains TBA-specific storage utilities and types
 // Full TBA API integration
 
-const TBA_BASE_URL = 'https://www.thebluealliance.com/api/v3';
+import { proxyGetJson } from '@/core/lib/apiProxy';
 
 // ============================================================================
 // Type Definitions
@@ -89,20 +89,11 @@ export const getMatchResult = (match: TBAMatch): {
  * Get teams for an event
  */
 export const getEventTeams = async (eventKey: string, apiKey: string): Promise<TBATeam[]> => {
-  const endpoint = `/event/${eventKey}/teams/keys`;
-  
-  const response = await fetch(`${TBA_BASE_URL}${endpoint}`, {
-    headers: {
-      'X-TBA-Auth-Key': apiKey,
-      'Accept': 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`TBA API Error: ${response.status} ${response.statusText}`);
-  }
-
-  const teamKeys = await response.json() as string[];
+  const teamKeys = await proxyGetJson<string[]>(
+    'tba',
+    `/event/${eventKey}/teams/keys`,
+    { apiKeyOverride: apiKey || undefined }
+  );
   // Convert team keys (e.g., "frc1234") to team objects
   return teamKeys.map(key => {
     const teamNumber = parseInt(key.replace('frc', ''));

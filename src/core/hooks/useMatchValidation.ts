@@ -127,15 +127,9 @@ export function useMatchValidation({
         setError(null);
 
         try {
-            // Get TBA API key from environment variable
-            const apiKey = import.meta.env.VITE_TBA_API_KEY;
-            if (!apiKey) {
-                throw new Error('TBA API key not configured. Please set VITE_TBA_API_KEY in your .env file.');
-            }
-
             // Fetch matches from TBA
             setProgress({ current: 0, total: 1, currentMatch: '', phase: 'fetching-tba' });
-            await fetchEventMatches(eventKey, apiKey);
+            await fetchEventMatches(eventKey, '');
 
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to load matches';

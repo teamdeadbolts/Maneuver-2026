@@ -34,9 +34,9 @@ interface ProcessingResult {
 }
 
 const APIDataPage: React.FC = () => {
-  // Get API keys from environment variables
-  const apiKey = import.meta.env.VITE_TBA_API_KEY || '';
-  const nexusApiKey = import.meta.env.VITE_NEXUS_API_KEY || '';
+  // API calls are proxied through Netlify Functions (server-side keys)
+  const apiKey = '';
+  const nexusApiKey = '';
 
   // Shared state for configuration
   const [eventKey, setEventKey] = useState('');
@@ -151,11 +151,6 @@ const APIDataPage: React.FC = () => {
   };
 
   const handleLoadMatchData = async () => {
-    if (!apiKey.trim()) {
-      toast.error('Please enter your TBA API key');
-      return;
-    }
-
     if (!eventKey.trim()) {
       toast.error('Please enter an event key');
       return;
@@ -170,11 +165,6 @@ const APIDataPage: React.FC = () => {
   };
 
   const handleLoadMatchResults = async () => {
-    if (!apiKey.trim()) {
-      toast.error('Please enter your TBA API key');
-      return;
-    }
-
     if (!eventKey.trim()) {
       toast.error('Please enter an event key');
       return;
@@ -203,11 +193,6 @@ const APIDataPage: React.FC = () => {
   // };
 
   const handleLoadEventTeams = async () => {
-    if (!apiKey.trim()) {
-      toast.error('Please enter your TBA API key');
-      return;
-    }
-
     if (!eventKey.trim()) {
       toast.error('Please enter an event key');
       return;
@@ -217,11 +202,6 @@ const APIDataPage: React.FC = () => {
   };
 
   const handleLoadPitData = async () => {
-    if (!nexusApiKey.trim()) {
-      toast.error('Please enter your Nexus API key');
-      return;
-    }
-
     if (!eventKey.trim()) {
       toast.error('Please enter an event key');
       return;
@@ -293,11 +273,6 @@ const APIDataPage: React.FC = () => {
   };
 
   const handleDebugNexus = async () => {
-    if (!nexusApiKey.trim()) {
-      toast.error('Please enter your Nexus API key');
-      return;
-    }
-
     setDebugNexusLoading(true);
     try {
       const eventsData = await getNexusEvents(nexusApiKey);
