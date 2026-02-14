@@ -47,6 +47,8 @@ export const DataOperationsCard: React.FC<DataOperationsCardProps> = ({
   onLoadPitData,
   onDebugNexus,
 }) => {
+  const useServerProxy = true;
+
   const getDataTypeInfo = () => {
     switch (dataType) {
       case 'match-data':
@@ -107,8 +109,8 @@ export const DataOperationsCard: React.FC<DataOperationsCardProps> = ({
 
     // Check requirements
     const hasEventKey = !requiresEvent || eventKey.trim();
-    const hasTBAKey = !requiresTBA || apiKey.trim();
-    const hasNexusKey = !requiresNexus || nexusApiKey.trim();
+    const hasTBAKey = !requiresTBA || useServerProxy || apiKey.trim();
+    const hasNexusKey = !requiresNexus || useServerProxy || nexusApiKey.trim();
 
     const canLoad = hasEventKey && hasTBAKey && hasNexusKey;
 
@@ -223,10 +225,10 @@ export const DataOperationsCard: React.FC<DataOperationsCardProps> = ({
     if (dataTypeInfo.requiresEvent && !eventKey.trim()) {
       missing.push('Event Key');
     }
-    if (dataTypeInfo.requiresTBA && !apiKey.trim()) {
+    if (dataTypeInfo.requiresTBA && !useServerProxy && !apiKey.trim()) {
       missing.push('TBA API Key');
     }
-    if (dataTypeInfo.requiresNexus && !nexusApiKey.trim()) {
+    if (dataTypeInfo.requiresNexus && !useServerProxy && !nexusApiKey.trim()) {
       missing.push('Nexus API Key');
     }
     return missing;
@@ -262,10 +264,10 @@ export const DataOperationsCard: React.FC<DataOperationsCardProps> = ({
         {/* API Requirements Info */}
         <div className="text-xs text-muted-foreground space-y-1">
           {dataTypeInfo.requiresTBA && (
-            <p>• Requires TBA API Key</p>
+            <p>{useServerProxy ? '• Uses server-side TBA API key' : '• Requires TBA API Key'}</p>
           )}
           {dataTypeInfo.requiresNexus && (
-            <p>• Requires Nexus API Key</p>
+            <p>{useServerProxy ? '• Uses server-side Nexus API key' : '• Requires Nexus API Key'}</p>
           )}
           {dataTypeInfo.requiresEvent && (
             <p>• Requires Event Key</p>

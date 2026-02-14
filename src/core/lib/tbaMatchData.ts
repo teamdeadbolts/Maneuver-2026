@@ -1,3 +1,4 @@
+import { proxyGetJson } from './apiProxy';
 /**
  * Generic TBA (The Blue Alliance) Types
  * 
@@ -118,8 +119,6 @@ export function formatMatchName(match: TBAMatchData): string {
 // TBA API Functions
 // ============================================================================
 
-const TBA_BASE_URL = 'https://www.thebluealliance.com/api/v3';
-
 /**
  * Fetch detailed match data for a specific match from TBA
  * 
@@ -129,28 +128,11 @@ const TBA_BASE_URL = 'https://www.thebluealliance.com/api/v3';
  */
 export async function fetchTBAMatchDetail(
   matchKey: string,
-  apiKey: string
+  apiKey?: string
 ): Promise<TBAMatchData> {
-  const url = `${TBA_BASE_URL}/match/${matchKey}`;
-  
-  const response = await fetch(url, {
-    headers: {
-      'X-TBA-Auth-Key': apiKey,
-    },
+  return proxyGetJson<TBAMatchData>('tba', `/match/${matchKey}`, {
+    apiKeyOverride: apiKey,
   });
-  
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Invalid TBA API key');
-    } else if (response.status === 404) {
-      throw new Error(`Match ${matchKey} not found`);
-    } else {
-      throw new Error(`TBA API request failed: ${response.status}`);
-    }
-  }
-  
-  const data = await response.json();
-  return data as TBAMatchData;
 }
 
 /**
@@ -162,28 +144,11 @@ export async function fetchTBAMatchDetail(
  */
 export async function fetchTBAEventMatches(
   eventKey: string,
-  apiKey: string
+  apiKey?: string
 ): Promise<TBAMatchSimple[]> {
-  const url = `${TBA_BASE_URL}/event/${eventKey}/matches/simple`;
-  
-  const response = await fetch(url, {
-    headers: {
-      'X-TBA-Auth-Key': apiKey,
-    },
+  return proxyGetJson<TBAMatchSimple[]>('tba', `/event/${eventKey}/matches/simple`, {
+    apiKeyOverride: apiKey,
   });
-  
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Invalid TBA API key');
-    } else if (response.status === 404) {
-      throw new Error(`Event ${eventKey} not found`);
-    } else {
-      throw new Error(`TBA API request failed: ${response.status}`);
-    }
-  }
-  
-  const data = await response.json();
-  return data as TBAMatchSimple[];
 }
 
 /**
@@ -196,26 +161,9 @@ export async function fetchTBAEventMatches(
  */
 export async function fetchTBAEventMatchesDetailed(
   eventKey: string,
-  apiKey: string
+  apiKey?: string
 ): Promise<TBAMatchData[]> {
-  const url = `${TBA_BASE_URL}/event/${eventKey}/matches`;
-  
-  const response = await fetch(url, {
-    headers: {
-      'X-TBA-Auth-Key': apiKey,
-    },
+  return proxyGetJson<TBAMatchData[]>('tba', `/event/${eventKey}/matches`, {
+    apiKeyOverride: apiKey,
   });
-  
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Invalid TBA API key');
-    } else if (response.status === 404) {
-      throw new Error(`Event ${eventKey} not found`);
-    } else {
-      throw new Error(`TBA API request failed: ${response.status}`);
-    }
-  }
-  
-  const data = await response.json();
-  return data as TBAMatchData[];
 }
