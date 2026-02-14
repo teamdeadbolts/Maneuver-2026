@@ -133,7 +133,7 @@ interface MatchSchedule {
  * Generate qualification match schedule
  * Uses sequential team assignment to ensure each team plays exactly 12 matches
  */
-function generateQualSchedule(teams: TeamSkillProfile[]): MatchSchedule[] {
+function generateQualSchedule(teams: TeamSkillProfile[], eventKey: string): MatchSchedule[] {
     const matches: MatchSchedule[] = [];
     const teamNumbers = teams.map(t => t.teamNumber);
     
@@ -153,7 +153,7 @@ function generateQualSchedule(teams: TeamSkillProfile[]): MatchSchedule[] {
         const blueTeams = selectedTeams.slice(3, 6);
         
         matches.push({
-            matchKey: `${DEMO_EVENT_KEY}_qm${matchNum}`,
+            matchKey: `${eventKey}_qm${matchNum}`,
             matchNumber: matchNum,
             compLevel: 'qm',
             redTeams,
@@ -333,7 +333,7 @@ export async function generateDemoEventScheduleOnly(options: Pick<DemoDataOption
         const teams = generateTeamProfiles();
         console.log(`  ✓ Generated ${teams.length} team profiles`);
 
-        const qualSchedule = generateQualSchedule(teams);
+        const qualSchedule = generateQualSchedule(teams, eventKey);
         console.log(`  ✓ Generated ${qualSchedule.length} qual matches`);
 
         localStorage.setItem('eventKey', eventKey);
@@ -395,7 +395,7 @@ export async function generateDemoEvent(options: DemoDataOptions = {}): Promise<
         console.log(`  ✓ Generated ${teams.length} team profiles`);
         
         // Generate match schedules (only qualification matches)
-        const qualSchedule = generateQualSchedule(teams);
+        const qualSchedule = generateQualSchedule(teams, eventKey);
         const allMatches = qualSchedule;
         console.log(`  ✓ Generated ${qualSchedule.length} qual matches`);
         
@@ -404,13 +404,17 @@ export async function generateDemoEvent(options: DemoDataOptions = {}): Promise<
         const processedEntries = new Set<string>(); // Track entry IDs to prevent duplicates
         
         for (const match of allMatches) {
+            const normalizedMatchKey = match.matchKey.includes('_')
+                ? (match.matchKey.split('_')[1] || match.matchKey)
+                : match.matchKey;
+
             // Red alliance entries
             for (let i = 0; i < match.redTeams.length; i++) {
                 const teamNumber = match.redTeams[i];
                 if (!teamNumber) continue;
                 
                 // Check for duplicate team in this match
-                const entryId = `${eventKey}::${match.matchKey.split('_')[1]}::${teamNumber}::red`;
+                const entryId = `${eventKey}::${normalizedMatchKey}::${teamNumber}::red`;
                 if (processedEntries.has(entryId)) {
                     console.warn(`Duplicate entry detected: ${entryId}`);
                     continue;
@@ -423,16 +427,16 @@ export async function generateDemoEvent(options: DemoDataOptions = {}): Promise<
                 const scoutName = TEST_SCOUT_NAMES[Math.floor(Math.random() * TEST_SCOUT_NAMES.length)] || "Demo Scout";
                 
                 const entry: ScoutingEntryBase<Record<string, unknown>> = {
-                    id: `${eventKey}::${match.matchKey.split('_')[1]}::${teamNumber}::red`,
+                    id: `${eventKey}::${normalizedMatchKey}::${teamNumber}::red`,
                     teamNumber,
                     matchNumber: match.matchNumber,
                     allianceColor: 'red',
                     scoutName,
                     eventKey,
-                    matchKey: match.matchKey,
+                    matchKey: normalizedMatchKey,
                     timestamp: Date.now() - (allMatches.length - allMatches.indexOf(match)) * 60000, // Spread over time
                     comments: Math.random() > 0.7 ? generateRandomComment(profile) : undefined,
-                    gameData: gameDataGenerator(profile, match.matchKey),
+                    gameData: gameDataGenerator(profile, normalizedMatchKey),
                 };
                 
                 await saveScoutingEntry(entry);
@@ -445,7 +449,7 @@ export async function generateDemoEvent(options: DemoDataOptions = {}): Promise<
                 if (!teamNumber) continue;
                 
                 // Check for duplicate team in this match
-                const entryId = `${eventKey}::${match.matchKey.split('_')[1]}::${teamNumber}::blue`;
+                const entryId = `${eventKey}::${normalizedMatchKey}::${teamNumber}::blue`;
                 if (processedEntries.has(entryId)) {
                     console.warn(`Duplicate entry detected: ${entryId}`);
                     continue;
@@ -458,16 +462,16 @@ export async function generateDemoEvent(options: DemoDataOptions = {}): Promise<
                 const scoutName = TEST_SCOUT_NAMES[Math.floor(Math.random() * TEST_SCOUT_NAMES.length)] || "Demo Scout";
                 
                 const entry: ScoutingEntryBase<Record<string, unknown>> = {
-                    id: `${eventKey}::${match.matchKey.split('_')[1]}::${teamNumber}::blue`,
+                    id: `${eventKey}::${normalizedMatchKey}::${teamNumber}::blue`,
                     teamNumber,
                     matchNumber: match.matchNumber,
                     allianceColor: 'blue',
                     scoutName,
                     eventKey,
-                    matchKey: match.matchKey,
+                    matchKey: normalizedMatchKey,
                     timestamp: Date.now() - (allMatches.length - allMatches.indexOf(match)) * 60000,
                     comments: Math.random() > 0.7 ? generateRandomComment(profile) : undefined,
-                    gameData: gameDataGenerator(profile, match.matchKey),
+                    gameData: gameDataGenerator(profile, normalizedMatchKey),
                 };
                 
                 await saveScoutingEntry(entry);

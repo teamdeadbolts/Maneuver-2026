@@ -9,11 +9,12 @@
 import { Button } from '@/core/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/core/components/ui/card';
 import { Badge } from '@/core/components/ui/badge';
-import { Check, X, Undo2 } from 'lucide-react';
+import { Input } from '@/core/components/ui/input';
+import { ArrowLeft, Check, X, Undo2 } from 'lucide-react';
 import { cn } from '@/core/lib/utils';
 import type { PathWaypoint, ClimbLevel, ClimbResult } from './types';
 import { getFuelOptions, CLIMB_LEVELS } from './constants';
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 // =============================================================================
 // TYPES
@@ -41,7 +42,7 @@ export interface PendingWaypointPopupProps {
     onClimbLevelSelect?: (level: ClimbLevel) => void;
 
     // Actions
-    onConfirm: () => void;
+    onConfirm: (climbStartTimeSecRemaining?: number | null) => void;
     onCancel: () => void;
 }
 
@@ -68,6 +69,15 @@ export function PendingWaypointPopup({
 }: PendingWaypointPopupProps) {
     const isClimb = pendingWaypoint.type === 'climb';
     const fuelOptions = getFuelOptions(robotCapacity);
+    const [climbStartTimeSecRemaining, setClimbStartTimeSecRemaining] = useState<number | null>(
+        pendingWaypoint.climbStartTimeSecRemaining ?? null
+    );
+    const [isSelectingClimbTime, setIsSelectingClimbTime] = useState(isClimb);
+    const climbTimePresets = useMemo(
+        () => (climbWithLevels ? [30, 25, 20, 15, 10, 5] : [20, 15, 10, 5]),
+        [climbWithLevels]
+    );
+    const climbTimeMax = climbWithLevels ? 135 : 20;
     
     // Prevent immediate clicks after popup appears
     const justOpenedRef = useRef(true);
@@ -81,9 +91,16 @@ export function PendingWaypointPopup({
         return () => clearTimeout(timer);
     }, []);
 
+    useEffect(() => {
+        if (!isClimb) return;
+        setIsSelectingClimbTime(true);
+    }, [isClimb, pendingWaypoint.id]);
+
     // Determine if confirm is enabled
     const canConfirm = isClimb
-        ? (climbWithLevels ? climbLevel !== undefined && climbResult !== null : climbResult !== null)
+        ? (isSelectingClimbTime
+            ? climbStartTimeSecRemaining !== null
+            : (climbStartTimeSecRemaining !== null && (climbWithLevels ? climbLevel !== undefined && climbResult !== null : climbResult !== null)))
         : accumulatedFuel > 0;
 
     return (
@@ -109,9 +126,11 @@ export function PendingWaypointPopup({
                         </Badge>
                         <CardTitle className="text-lg font-bold tracking-tight">
                             {isClimb
-                                ? (climbWithLevels
-                                    ? (climbLevel ? `${climbLevel} - Select Outcome` : 'Select Level')
-                                    : 'Climb Outcome')
+                                ? (isSelectingClimbTime
+                                    ? 'Select Climb Start Time'
+                                    : (climbWithLevels
+                                        ? (climbLevel ? `L${climbLevel} - Select Outcome` : 'Select Level')
+                                        : 'Climb Outcome'))
                                 : (accumulatedFuel > 0 ? `Total: +${accumulatedFuel}` : 'Select Amount')}
                         </CardTitle>
                     </div>
@@ -120,7 +139,54 @@ export function PendingWaypointPopup({
                 {/* Content */}
                 <CardContent className="overflow-y-auto px-2 shrink min-h-0">
                     {isClimb ? (
-                        climbWithLevels && !climbLevel ? (
+                        isSelectingClimbTime ? (
+                            <div className="space-y-3 p-2">
+                                <div className={cn(
+                                    "grid gap-2",
+                                    climbWithLevels ? "grid-cols-3" : "grid-cols-4"
+                                )}>
+                                    {climbTimePresets.map((seconds) => (
+                                        <Button
+                                            key={seconds}
+                                            type="button"
+                                            variant={climbStartTimeSecRemaining === seconds ? 'default' : 'outline'}
+                                            onClick={() => setClimbStartTimeSecRemaining((prev) => prev === seconds ? null : seconds)}
+                                            className="h-11"
+                                        >
+                                            {climbWithLevels && seconds === 30 ? '30+' : `${seconds}s`}
+                                        </Button>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-1">
+                                    <label htmlFor="climb-start-time" className="text-sm text-muted-foreground">
+                                        Exact seconds remaining (0-{climbTimeMax})
+                                    </label>
+                                    <Input
+                                        id="climb-start-time"
+                                        type="number"
+                                        min={0}
+                                        max={climbTimeMax}
+                                        value={climbStartTimeSecRemaining ?? ''}
+                                        onChange={(e) => {
+                                            const rawValue = e.target.value;
+                                            if (rawValue === '') {
+                                                setClimbStartTimeSecRemaining(null);
+                                                return;
+                                            }
+
+                                            const parsed = Number.parseInt(rawValue, 10);
+                                            if (Number.isNaN(parsed)) return;
+
+                                            const clamped = Math.max(0, Math.min(climbTimeMax, parsed));
+                                            setClimbStartTimeSecRemaining(clamped);
+                                        }}
+                                        placeholder="Type exact time"
+                                    />
+                                </div>
+
+                            </div>
+                        ) : climbWithLevels && !climbLevel ? (
                             // Teleop: Level selection first
                             <div className="grid grid-cols-3 gap-3 p-2">
                                 {CLIMB_LEVELS.map((level) => (
@@ -130,7 +196,7 @@ export function PendingWaypointPopup({
                                         onClick={() => onClimbLevelSelect?.(level)}
                                         className="h-16 flex flex-col gap-1 items-center justify-center border-2 transition-all rounded-xl hover:bg-blue-500/20 hover:border-blue-400"
                                     >
-                                        <span className="font-bold text-lg">{level}</span>
+                                        <span className="font-bold text-lg">L{level}</span>
                                     </Button>
                                 ))}
                             </div>
@@ -186,7 +252,7 @@ export function PendingWaypointPopup({
                 </CardContent>
 
                 {/* Footer */}
-                <CardFooter className="flex flex-row items-center justify-between gap-3 border-t shrink-0 !pt-2">
+                <CardFooter className="flex flex-row items-center justify-between gap-3 border-t shrink-0 pt-2!">
                     <Button
                         variant="outline"
                         size="icon"
@@ -197,6 +263,17 @@ export function PendingWaypointPopup({
                     </Button>
 
                     <div className="flex flex-row gap-3">
+                        {isClimb && !isSelectingClimbTime && (
+                            <Button
+                                variant="secondary"
+                                size="icon"
+                                className="h-12 w-12 rounded-full border-2"
+                                onClick={() => setIsSelectingClimbTime(true)}
+                            >
+                                <ArrowLeft className="h-6 w-6" />
+                            </Button>
+                        )}
+
                         {!isClimb && (
                             <Button
                                 variant="secondary"
@@ -211,7 +288,13 @@ export function PendingWaypointPopup({
 
                         <Button
                             size="icon"
-                            onClick={onConfirm}
+                            onClick={() => {
+                                if (isClimb && isSelectingClimbTime) {
+                                    setIsSelectingClimbTime(false);
+                                    return;
+                                }
+                                onConfirm(climbStartTimeSecRemaining);
+                            }}
                             disabled={!canConfirm}
                             className="h-12 w-12 rounded-full border-2 bg-green-600 hover:bg-green-500"
                         >

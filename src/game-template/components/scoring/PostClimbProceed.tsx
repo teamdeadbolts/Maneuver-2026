@@ -43,7 +43,7 @@ export function PostClimbProceed({
                 </CardHeader>
                 <CardFooter className="flex flex-col gap-2 pt-2">
                     <Button
-                        onClick={onProceed}
+                        onClick={() => onProceed()}
                         className="w-full h-12 text-base font-bold"
                     >
                         Proceed to {nextPhaseName}

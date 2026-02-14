@@ -671,18 +671,19 @@ function TeleopFieldMapContent() {
                             onFuelSelect={handleFuelSelect}
                             onFuelUndo={handleFuelUndo}
                             climbResult={climbResult}
-                            onClimbResultSelect={(result) => setClimbResult(result as any)}
+                            onClimbResultSelect={(result) => setClimbResult(result)}
                             climbWithLevels={true}
                             climbLevel={climbLevel}
                             onClimbLevelSelect={(level) => setClimbLevel(level)}
-                            onConfirm={pendingWaypoint.type === 'climb' ? () => {
+                            onConfirm={pendingWaypoint.type === 'climb' ? (selectedClimbStartTimeSecRemaining) => {
                                 if (climbLevel && climbResult) {
                                     const waypoint: PathWaypoint = {
                                         ...pendingWaypoint,
-                                        action: climbLevel,
-                                        amountLabel: `${climbLevel} ${climbResult === 'success' ? '✓' : '✗'}`,
-                                        climbLevel: climbLevel,
+                                        action: `climbL${climbLevel}`,
+                                        amountLabel: `L${climbLevel} ${climbResult === 'success' ? '✓' : '✗'}`,
+                                        climbLevel,
                                         climbResult: climbResult,
+                                        climbStartTimeSecRemaining: selectedClimbStartTimeSecRemaining ?? null,
                                     };
                                     onAddAction(waypoint);
                                     setPendingWaypoint(null);

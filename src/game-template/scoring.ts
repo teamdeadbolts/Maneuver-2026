@@ -52,6 +52,8 @@ export interface GameData {
         foulCommittedCount?: number;
         // Auto toggles
         autoClimbL1?: boolean;
+        // Climb timing
+        autoClimbStartTimeSecRemaining?: number | null;
         [key: string]: unknown;
     };
     teleop: {
@@ -70,6 +72,8 @@ export interface GameData {
         brokenDownDuration?: number; // milliseconds
         // Teleop toggles
         playedDefense?: boolean;
+        // Climb timing
+        teleopClimbStartTimeSecRemaining?: number | null;
         [key: string]: unknown;
     };
     endgame: {

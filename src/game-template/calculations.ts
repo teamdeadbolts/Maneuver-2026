@@ -223,6 +223,14 @@ export const calculateTeamStats = (teamMatches: ScoutingEntry[]): Omit<TeamStats
         autoBumpStuckDuration: teamMatches.map(m => millisecondsToSeconds(val(m.gameData?.auto?.bumpStuckDuration))),
         teleopTrenchStuckDuration: teamMatches.map(m => millisecondsToSeconds(val(m.gameData?.teleop?.trenchStuckDuration))),
         teleopBumpStuckDuration: teamMatches.map(m => millisecondsToSeconds(val(m.gameData?.teleop?.bumpStuckDuration))),
+
+        // Climb start timing (seconds remaining) - include only matches with recorded values
+        autoClimbStartTimeSec: teamMatches
+            .map(m => m.gameData?.auto?.autoClimbStartTimeSecRemaining)
+            .filter((time): time is number => typeof time === 'number'),
+        endgameClimbStartTimeSec: teamMatches
+            .map(m => m.gameData?.teleop?.teleopClimbStartTimeSecRemaining)
+            .filter((time): time is number => typeof time === 'number'),
     };
 
     // ============================================================================
@@ -408,6 +416,8 @@ function getEmptyStats(): Omit<TeamStats, 'teamNumber' | 'eventKey'> {
             autoPoints: [],
             teleopPoints: [],
             endgamePoints: [],
+            autoClimbStartTimeSec: [],
+            endgameClimbStartTimeSec: [],
         },
     };
 }

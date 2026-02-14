@@ -837,7 +837,7 @@ function AutoFieldMapContent({
                             setFuelHistory(prev => prev.slice(0, -1));
                         }}
                         onClimbResultSelect={setClimbResult}
-                        onConfirm={() => {
+                        onConfirm={(selectedClimbStartTimeSecRemaining) => {
                             let delta = 0;
                             let label = '';
                             let action = pendingWaypoint.action;
@@ -854,7 +854,10 @@ function AutoFieldMapContent({
                                 ...pendingWaypoint,
                                 fuelDelta: delta,
                                 amountLabel: label,
-                                action: action
+                                action: action,
+                                climbStartTimeSecRemaining: pendingWaypoint.type === 'climb'
+                                    ? selectedClimbStartTimeSecRemaining ?? null
+                                    : undefined,
                             };
                             onAddAction(finalized);
                             setPendingWaypoint(null);

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
 import { Button } from "@/core/components/ui/button";
 import { Badge } from "@/core/components/ui/badge";
+import { Input } from "@/core/components/ui/input";
 import { toast } from "sonner";
 import { ArrowRight } from "lucide-react";
 import { ScoringSections, StatusToggles } from "@/game-template/components";
@@ -14,6 +15,8 @@ import { submitMatchData } from "@/core/lib/submitMatch";
 import { useGame } from "@/core/contexts/GameContext";
 import { workflowConfig } from "@/game-template/game-schema";
 
+const TELEOP_CLIMB_START_PRESETS = [30, 25, 20, 15, 10, 5] as const;
+
 const TeleopScoringPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -24,7 +27,9 @@ const TeleopScoringPage = () => {
 
   const getSavedState = () => {
     const saved = localStorage.getItem("teleopStateStack");
-    return saved ? JSON.parse(saved) : [];
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    return Array.isArray(parsed) ? parsed : [];
   };
 
   const getSavedStatus = () => {
@@ -40,6 +45,9 @@ const TeleopScoringPage = () => {
   const [scoringActions, setScoringActions] = useState(getSavedState());
   const [robotStatus, setRobotStatus] = useState(getSavedStatus());
   const [undoHistory, setUndoHistory] = useState(getSavedHistory());
+  const teleopClimbStartTimeSecRemaining = typeof robotStatus?.teleopClimbStartTimeSecRemaining === 'number'
+    ? robotStatus.teleopClimbStartTimeSecRemaining
+    : null;
 
   // Save state to localStorage whenever actions change
   useEffect(() => {
@@ -102,8 +110,28 @@ const TeleopScoringPage = () => {
     });
   };
 
+  const handleTeleopClimbStartPreset = (seconds: number) => {
+    updateRobotStatus({
+      teleopClimbStartTimeSecRemaining:
+        teleopClimbStartTimeSecRemaining === seconds ? null : seconds,
+    });
+  };
+
+  const handleTeleopClimbStartInput = (rawValue: string) => {
+    if (rawValue === '') {
+      updateRobotStatus({ teleopClimbStartTimeSecRemaining: null });
+      return;
+    }
+
+    const parsed = Number.parseInt(rawValue, 10);
+    if (Number.isNaN(parsed)) return;
+
+    const clamped = Math.max(0, Math.min(135, parsed));
+    updateRobotStatus({ teleopClimbStartTimeSecRemaining: clamped });
+  };
+
   const handleProceed = async (finalActions?: any[]) => {
-    let actionsToUse = finalActions || scoringActions;
+    let actionsToUse = Array.isArray(finalActions) ? finalActions : scoringActions;
 
     // Capture any active stuck timers if they wasn't captured by the field map's internal onProceed
     if (!finalActions) {
@@ -154,7 +182,7 @@ const TeleopScoringPage = () => {
       }
     }
 
-    if (finalActions) {
+    if (Array.isArray(finalActions)) {
       setScoringActions(actionsToUse);
     }
     localStorage.setItem("teleopStateStack", JSON.stringify(actionsToUse));
@@ -301,6 +329,42 @@ const TeleopScoringPage = () => {
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Teleop Climb Start Time</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                {TELEOP_CLIMB_START_PRESETS.map((seconds) => (
+                  <Button
+                    key={seconds}
+                    type="button"
+                    variant={teleopClimbStartTimeSecRemaining === seconds ? "default" : "outline"}
+                    onClick={() => handleTeleopClimbStartPreset(seconds)}
+                    className="h-9"
+                  >
+                    {seconds === 30 ? '30+' : `${seconds}s`}
+                  </Button>
+                ))}
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="teleop-climb-start-time" className="text-sm text-muted-foreground">
+                  Exact seconds remaining (0-135)
+                </label>
+                <Input
+                  id="teleop-climb-start-time"
+                  type="number"
+                  min={0}
+                  max={135}
+                  value={teleopClimbStartTimeSecRemaining ?? ''}
+                  onChange={(e) => handleTeleopClimbStartInput(e.target.value)}
+                  placeholder="Type exact time"
+                />
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Undo Button */}
           <Button

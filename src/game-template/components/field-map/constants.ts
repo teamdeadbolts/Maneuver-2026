@@ -145,7 +145,7 @@ export const FUEL_OPTIONS = getFuelOptions(20);
 // CLIMB LEVELS
 // =============================================================================
 
-export const CLIMB_LEVELS = ['L1', 'L2', 'L3'] as const;
+export const CLIMB_LEVELS = [1, 2, 3] as const;
 
 // =============================================================================
 // AUTO START POSITIONS (in traversal zone)

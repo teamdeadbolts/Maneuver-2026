@@ -23,7 +23,7 @@ export type PathActionType =
 
 export type ZoneType = 'allianceZone' | 'neutralZone' | 'opponentZone';
 
-export type ClimbLevel = 'L1' | 'L2' | 'L3';
+export type ClimbLevel = 1 | 2 | 3;
 export type ClimbResult = 'success' | 'fail';
 
 // =============================================================================
@@ -43,6 +43,7 @@ export interface PathWaypoint {
     zone?: ZoneType;
     climbLevel?: ClimbLevel;
     climbResult?: ClimbResult;
+    climbStartTimeSecRemaining?: number | null;
     duration?: number; // For stuck events (ms)
     obstacleType?: 'bump' | 'trench'; // For stuck events
 }

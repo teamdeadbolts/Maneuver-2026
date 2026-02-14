@@ -189,6 +189,9 @@ export const gameDataTransformation: DataTransformation = {
             result.auto.foulCommittedCount = (result.auto.foulCommittedCount || 0) + 1;
             break;
           case 'climb':
+            if (typeof wp.climbStartTimeSecRemaining === 'number') {
+              result.auto.autoClimbStartTimeSecRemaining = wp.climbStartTimeSecRemaining;
+            }
             if (wp.action === 'climb-success') {
               result.auto.autoClimbL1 = true;
             }
@@ -228,7 +231,10 @@ export const gameDataTransformation: DataTransformation = {
             break;
           case 'climb': {
             // Track climb level and outcome in endgame section
-            const level = wp.climbLevel || 1;
+            if (typeof wp.climbStartTimeSecRemaining === 'number') {
+              result.teleop.teleopClimbStartTimeSecRemaining = wp.climbStartTimeSecRemaining;
+            }
+            const level = [1, 2, 3].includes(wp.climbLevel) ? wp.climbLevel : 1;
             if (wp.climbResult === 'success') {
               result.endgame[`climbL${level}`] = true;
             } else if (wp.climbResult === 'fail') {

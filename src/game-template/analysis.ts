@@ -50,6 +50,8 @@ export interface TeamStatsTemplate extends TeamStats {
     avgTeleopFuelPassed: number;
     avgFuelPassed: number;
     avgTotalFuel: number;
+    avgAutoClimbStartTimeSec: number;
+    avgTeleopClimbStartTimeSec: number;
 
     // Fuel maximums
     maxAutoFuel: number;
@@ -155,6 +157,8 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 avgTeleopFuelPassed: 0,
                 avgFuelPassed: 0,
                 avgTotalFuel: 0,
+                avgAutoClimbStartTimeSec: 0,
+                avgTeleopClimbStartTimeSec: 0,
                 maxAutoFuel: 0,
                 maxTeleopFuel: 0,
                 maxAutoFuelPassed: 0,
@@ -333,6 +337,19 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
         const avgEndgamePoints = matchResults.reduce((sum, m) => sum + m.endgamePoints, 0) / matchCount;
         const climbSuccessCount = totals.climbL1 + totals.climbL2 + totals.climbL3;
 
+        const autoClimbStartTimes = entries
+            .map(entry => entry.gameData?.auto?.autoClimbStartTimeSecRemaining)
+            .filter((time): time is number => typeof time === 'number');
+        const teleopClimbStartTimes = entries
+            .map(entry => entry.gameData?.teleop?.teleopClimbStartTimeSecRemaining)
+            .filter((time): time is number => typeof time === 'number');
+        const avgAutoClimbStartTimeSec = autoClimbStartTimes.length > 0
+            ? autoClimbStartTimes.reduce((sum, time) => sum + time, 0) / autoClimbStartTimes.length
+            : 0;
+        const avgTeleopClimbStartTimeSec = teleopClimbStartTimes.length > 0
+            ? teleopClimbStartTimes.reduce((sum, time) => sum + time, 0) / teleopClimbStartTimes.length
+            : 0;
+
         // Calculate primary roles (most frequently played, supporting ties)
         const activeRoles = [
             { name: 'Cycler', count: totals.roleActiveCycler },
@@ -400,6 +417,8 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
             avgTeleopFuelPassed: Math.round((totals.teleopFuelPassed / matchCount) * 10) / 10,
             avgFuelPassed: Math.round((totals.fuelPassed / matchCount) * 10) / 10,
             avgTotalFuel: Math.round(((totals.autoFuel + totals.teleopFuel) / matchCount) * 10) / 10,
+            avgAutoClimbStartTimeSec: Math.round(avgAutoClimbStartTimeSec * 10) / 10,
+            avgTeleopClimbStartTimeSec: Math.round(avgTeleopClimbStartTimeSec * 10) / 10,
             maxAutoFuel: Math.max(...matchResults.map(m => m.autoFuel || 0)),
             maxTeleopFuel: Math.max(...matchResults.map(m => m.teleopFuel || 0)),
             maxAutoFuelPassed: Math.max(...matchResults.map(m => m.autoFuelPassed || 0)),
@@ -515,6 +534,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 stats: [
                     { key: 'autoClimbRate', label: 'Success Rate', type: 'percentage', color: 'blue' },
                     { key: 'autoClimbAttempts', label: 'Total Attempts', type: 'number', color: 'slate' },
+                    { key: 'avgAutoClimbStartTimeSec', label: 'Avg Start Time', type: 'number', color: 'orange', subtitle: 'seconds remaining' },
                 ],
             },
             {
@@ -529,6 +549,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                     { key: 'climbL2Count', label: 'Level 2 Climbs', type: 'number', color: 'slate' },
                     { key: 'climbL3Rate', label: 'Level 3 Success Rate', type: 'percentage', color: 'purple' },
                     { key: 'climbL3Count', label: 'Level 3 Climbs', type: 'number', color: 'slate' },
+                    { key: 'avgTeleopClimbStartTimeSec', label: 'Avg Start Time', type: 'number', color: 'orange', subtitle: 'seconds remaining' },
                 ],
             },
         ];

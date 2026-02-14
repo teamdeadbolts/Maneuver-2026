@@ -34,9 +34,9 @@ function getActionDisplay(action: PathWaypoint): { label: string; points: number
         
         // For climb, match by climbLevel
         if (action.type === 'climb' && action.climbResult === 'success') {
-            if (action.climbLevel === 'L1') return key === 'climbL1';
-            if (action.climbLevel === 'L2') return key === 'climbL2';
-            if (action.climbLevel === 'L3') return key === 'climbL3';
+            if (action.climbLevel === 1) return key === 'climbL1';
+            if (action.climbLevel === 2) return key === 'climbL2';
+            if (action.climbLevel === 3) return key === 'climbL3';
         }
         
         // For other actions, just match by pathType

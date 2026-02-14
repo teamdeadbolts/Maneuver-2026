@@ -347,6 +347,7 @@ export const strategyColumns = {
     auto: {
         "rawValues.autoFuel": { label: "Auto Fuel", visible: true, numeric: true },
         "autoClimbRate": { label: "Auto Climb %", visible: true, numeric: true, percentage: true },
+        "rawValues.autoClimbStartTimeSec": { label: "Auto Climb Start (s)", visible: true, numeric: true },
         "rawValues.autoTrenchStuckDuration": { label: "Auto Trench Stuck", visible: false, numeric: true },
         "rawValues.autoBumpStuckDuration": { label: "Auto Bump Stuck", visible: false, numeric: true },
     },
@@ -355,20 +356,21 @@ export const strategyColumns = {
         "rawValues.teleopFuel": { label: "Teleop Fuel", visible: true, numeric: true },
         "rawValues.teleopFuelPassed": { label: "Teleop Passed", visible: false, numeric: true },
         "teleop.defenseRate": { label: "Defense %", visible: false, numeric: true, percentage: true },
+        "endgame.usedTrenchInTeleopRate": { label: "Used Trench %", visible: false, numeric: true, percentage: true },
+        "endgame.usedBumpInTeleopRate": { label: "Used Bump %", visible: false, numeric: true, percentage: true },
+        "endgame.passedToAllianceFromNeutralRate": { label: "Passed Neutral → Alliance %", visible: false, numeric: true, percentage: true },
+        "endgame.passedToAllianceFromOpponentRate": { label: "Passed Opponent → Alliance %", visible: false, numeric: true, percentage: true },
+        "endgame.passedToNeutralRate": { label: "Passed Opponent → Neutral %", visible: false, numeric: true, percentage: true },
         "rawValues.teleopTrenchStuckDuration": { label: "Trench Stuck (s)", visible: true, numeric: true },
         "rawValues.teleopBumpStuckDuration": { label: "Bump Stuck (s)", visible: true, numeric: true },
     },
     // Endgame stats (climb rates are percentages, keep as-is)
     endgame: {
+        "rawValues.endgameClimbStartTimeSec": { label: "Endgame Climb Start (s)", visible: true, numeric: true },
         "endgame.climbL1Rate": { label: "L1 Climb %", visible: false, numeric: true, percentage: true },
         "endgame.climbL2Rate": { label: "L2 Climb %", visible: true, numeric: true, percentage: true },
         "endgame.climbL3Rate": { label: "L3 Climb %", visible: true, numeric: true, percentage: true },
         "endgame.climbSuccessRate": { label: "Climb Success %", visible: true, numeric: true, percentage: true },
-        "endgame.usedTrenchInTeleopRate": { label: "Used Trench %", visible: false, numeric: true, percentage: true },
-        "endgame.usedBumpInTeleopRate": { label: "Used Bump %", visible: false, numeric: true, percentage: true },
-        "endgame.passedToAllianceFromNeutralRate": { label: "Neutral → Alliance %", visible: false, numeric: true, percentage: true },
-        "endgame.passedToAllianceFromOpponentRate": { label: "Opponent → Alliance %", visible: false, numeric: true, percentage: true },
-        "endgame.passedToNeutralRate": { label: "Opponent → Neutral %", visible: false, numeric: true, percentage: true },
     },
 } as const;
 
@@ -377,9 +379,9 @@ export const strategyColumns = {
  */
 export const strategyPresets: Record<string, string[]> = {
     essential: ["teamNumber", "matchCount", "rawValues.totalPoints", "rawValues.totalFuel", "endgame.climbSuccessRate"],
-    auto: ["teamNumber", "matchCount", "rawValues.autoPoints", "rawValues.autoFuel", "autoClimbRate"],
-    teleop: ["teamNumber", "matchCount", "rawValues.teleopPoints", "rawValues.teleopFuel", "rawValues.teleopFuelPassed"],
-    endgame: ["teamNumber", "matchCount", "rawValues.endgamePoints", "endgame.climbL1Rate", "endgame.climbL2Rate", "endgame.climbL3Rate"],
+    auto: ["teamNumber", "matchCount", "rawValues.autoPoints", "rawValues.autoFuel", "autoClimbRate", "rawValues.autoClimbStartTimeSec"],
+    teleop: ["teamNumber", "matchCount", "rawValues.teleopPoints", "rawValues.teleopFuel", "rawValues.teleopFuelPassed", "endgame.usedTrenchInTeleopRate", "endgame.usedBumpInTeleopRate", "endgame.passedToAllianceFromNeutralRate", "endgame.passedToAllianceFromOpponentRate", "endgame.passedToNeutralRate"],
+    endgame: ["teamNumber", "matchCount", "rawValues.endgamePoints", "rawValues.endgameClimbStartTimeSec", "endgame.climbL1Rate", "endgame.climbL2Rate", "endgame.climbL3Rate"],
     basic: ["teamNumber", "eventKey", "matchCount"],
 };
 
