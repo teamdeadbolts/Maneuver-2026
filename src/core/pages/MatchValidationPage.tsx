@@ -6,6 +6,8 @@ import {
   MatchListFilters,
   ValidationSettingsSheet,
   MatchListCard,
+  FuelOPRCard,
+  type FuelOPRDisplayRow,
 } from '@/core/components/match-validation';
 import { EventNameSelector } from '@/core/components/GameStartComponents/EventNameSelector';
 import { Card, CardContent } from '@/core/components/ui/card';
@@ -14,14 +16,31 @@ import { RefreshCw, Settings } from 'lucide-react';
 import type { MatchListItem, ValidationConfig } from '@/core/lib/matchValidationTypes';
 import { DEFAULT_VALIDATION_CONFIG } from '@/core/lib/matchValidationTypes';
 import { formatMatchLabel } from '@/core/lib/matchValidationUtils';
+import { getCachedTBAEventMatches } from '@/core/lib/tbaCache';
+import { getEntriesByEvent } from '@/core/db/scoutingDatabase';
+import { calculateFuelOPR } from '@/game-template/fuelOpr';
 
 const VALIDATION_CONFIG_KEY = 'validationConfig';
+
+const GAME_VALIDATION_DEFAULT_CONFIG: ValidationConfig = {
+  ...DEFAULT_VALIDATION_CONFIG,
+  thresholds: {
+    ...DEFAULT_VALIDATION_CONFIG.thresholds,
+    criticalAbsolute: 60,
+    warningAbsolute: 40,
+    minorAbsolute: 20,
+  },
+};
 
 export const MatchValidationPage: React.FC = () => {
   const [eventKey, setEventKey] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<MatchListItem | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [validationConfig, setValidationConfig] = useState<ValidationConfig>(DEFAULT_VALIDATION_CONFIG);
+  const [validationConfig, setValidationConfig] = useState<ValidationConfig>(GAME_VALIDATION_DEFAULT_CONFIG);
+  const [demoAutoValidated, setDemoAutoValidated] = useState(false);
+  const [fuelOprRows, setFuelOprRows] = useState<FuelOPRDisplayRow[]>([]);
+  const [fuelOprLambda, setFuelOprLambda] = useState<number | null>(null);
+  const [fuelOprLoading, setFuelOprLoading] = useState(false);
 
   // Load current event and validation config from localStorage on mount
   useEffect(() => {
@@ -34,8 +53,10 @@ export const MatchValidationPage: React.FC = () => {
       try {
         setValidationConfig(JSON.parse(savedConfig));
       } catch {
-        setValidationConfig(DEFAULT_VALIDATION_CONFIG);
+        setValidationConfig(GAME_VALIDATION_DEFAULT_CONFIG);
       }
+    } else {
+      setValidationConfig(GAME_VALIDATION_DEFAULT_CONFIG);
     }
   }, []);
 
@@ -47,7 +68,6 @@ export const MatchValidationPage: React.FC = () => {
     setFilters,
     validateEvent,
     refreshResults,
-    scalingEnabled,
   } = useMatchValidationWithScaling({
     eventKey: eventKey,
     autoLoad: true,
@@ -78,6 +98,148 @@ export const MatchValidationPage: React.FC = () => {
     // Note: Will need to re-validate for changes to take effect
   };
 
+  // Reset demo auto-validation marker when switching events
+  useEffect(() => {
+    setDemoAutoValidated(false);
+  }, [eventKey]);
+
+  // Auto-run validation once for demo event after match data loads
+  useEffect(() => {
+    if (eventKey !== 'demo2026') return;
+    if (demoAutoValidated || isValidating) return;
+    if (matchList.length === 0) return;
+
+    const hasEligibleMatches = matchList.some(m => m.hasScouting && m.hasTBAResults);
+    if (!hasEligibleMatches) return;
+
+    setDemoAutoValidated(true);
+    void validateEvent();
+  }, [eventKey, demoAutoValidated, isValidating, matchList, validateEvent]);
+
+  useEffect(() => {
+    if (!eventKey) {
+      setFuelOprRows([]);
+      setFuelOprLambda(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const parseFuelCounts = (gameData: Record<string, unknown>): { auto: number; teleop: number } => {
+      const auto = gameData.auto as Record<string, unknown> | undefined;
+      const teleop = gameData.teleop as Record<string, unknown> | undefined;
+
+      const autoFuel =
+        (typeof auto?.fuelScoredCount === 'number' ? auto.fuelScoredCount : undefined) ??
+        (typeof auto?.fuelScored === 'number' ? auto.fuelScored : undefined) ??
+        (typeof gameData.autoFuelScored === 'number' ? gameData.autoFuelScored : undefined) ??
+        0;
+
+      const teleopFuel =
+        (typeof teleop?.fuelScoredCount === 'number' ? teleop.fuelScoredCount : undefined) ??
+        (typeof teleop?.fuelScored === 'number' ? teleop.fuelScored : undefined) ??
+        (typeof gameData.teleopFuelScored === 'number' ? gameData.teleopFuelScored : undefined) ??
+        0;
+
+      return { auto: autoFuel, teleop: teleopFuel };
+    };
+
+    const loadFuelOprData = async () => {
+      setFuelOprLoading(true);
+      try {
+        const [cachedMatches, entries] = await Promise.all([
+          getCachedTBAEventMatches(eventKey, true),
+          getEntriesByEvent(eventKey),
+        ]);
+
+        if (cancelled) return;
+
+        const opr = calculateFuelOPR(cachedMatches, {
+          ridgeLambda: 0.75,
+          includePlayoffs: false,
+        });
+
+        const scaledByTeam = new Map<number, {
+          matches: number;
+          autoSum: number;
+          teleopSum: number;
+        }>();
+
+        for (const entry of entries) {
+          const team = entry.teamNumber;
+          const gameData = (entry.gameData ?? {}) as Record<string, unknown>;
+          const scaledMetrics = gameData.scaledMetrics as {
+            scaledAutoFuel?: number;
+            scaledTeleopFuel?: number;
+          } | undefined;
+
+          const rawFuel = parseFuelCounts(gameData);
+          const scaledAuto = typeof scaledMetrics?.scaledAutoFuel === 'number'
+            ? scaledMetrics.scaledAutoFuel
+            : rawFuel.auto;
+          const scaledTeleop = typeof scaledMetrics?.scaledTeleopFuel === 'number'
+            ? scaledMetrics.scaledTeleopFuel
+            : rawFuel.teleop;
+
+          const current = scaledByTeam.get(team) ?? { matches: 0, autoSum: 0, teleopSum: 0 };
+          current.matches += 1;
+          current.autoSum += scaledAuto;
+          current.teleopSum += scaledTeleop;
+          scaledByTeam.set(team, current);
+        }
+
+        const oprByTeam = new Map(opr.teams.map(team => [team.teamNumber, team]));
+        const allTeamNumbers = new Set<number>([
+          ...oprByTeam.keys(),
+          ...scaledByTeam.keys(),
+        ]);
+
+        const rows: FuelOPRDisplayRow[] = [...allTeamNumbers]
+          .map(teamNumber => {
+            const oprTeam = oprByTeam.get(teamNumber);
+            const scaledTeam = scaledByTeam.get(teamNumber);
+            const matchesPlayed = Math.max(oprTeam?.matchesPlayed ?? 0, scaledTeam?.matches ?? 0);
+
+            const scaledAutoAvg = scaledTeam && scaledTeam.matches > 0 ? scaledTeam.autoSum / scaledTeam.matches : 0;
+            const scaledTeleopAvg = scaledTeam && scaledTeam.matches > 0 ? scaledTeam.teleopSum / scaledTeam.matches : 0;
+
+            return {
+              teamNumber,
+              matchesPlayed,
+              autoFuelOPR: oprTeam?.autoFuelOPR ?? 0,
+              teleopFuelOPR: oprTeam?.teleopFuelOPR ?? 0,
+              totalFuelOPR: oprTeam?.totalFuelOPR ?? 0,
+              scaledAutoAvg,
+              scaledTeleopAvg,
+              scaledTotalAvg: scaledAutoAvg + scaledTeleopAvg,
+            };
+          })
+          .sort((a, b) => b.totalFuelOPR - a.totalFuelOPR || b.scaledTotalAvg - a.scaledTotalAvg || a.teamNumber - b.teamNumber);
+
+        if (!cancelled) {
+          setFuelOprRows(rows);
+          setFuelOprLambda(opr.lambda);
+        }
+      } catch (error) {
+        console.error('Failed to load Fuel OPR data:', error);
+        if (!cancelled) {
+          setFuelOprRows([]);
+          setFuelOprLambda(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setFuelOprLoading(false);
+        }
+      }
+    };
+
+    void loadFuelOprData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventKey, matchList, isValidating]);
+
   return (
     <div className="container min-h-screen mx-auto px-4 pt-12 pb-24 space-y-6 mt-safe">
       {/* Header */}
@@ -87,10 +249,9 @@ export const MatchValidationPage: React.FC = () => {
             <h1 className="text-3xl font-bold">Match Validation</h1>
             <p className="text-muted-foreground">
               Verify scouting data against official TBA results
-              {scalingEnabled && <span className="text-green-600 dark:text-green-400"> • Fuel scaling enabled</span>}
             </p>
           </div>
-          <div className="flex gap-2 flex-wrap z-50 relative">
+          <div className="flex gap-2 flex-wrap">
             <Button
               type="button"
               onClick={() => {
@@ -108,7 +269,7 @@ export const MatchValidationPage: React.FC = () => {
               disabled={isValidating}
               variant="outline"
             >
-              <RefreshCw className={`h - 4 w - 4 mr - 2 ${isValidating ? 'animate-spin' : ''} `} />
+              <RefreshCw className={`h-4 w-4 mr-2 ${isValidating ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
@@ -156,6 +317,15 @@ export const MatchValidationPage: React.FC = () => {
       {/* Summary Card */}
       {matchList.length > 0 && (
         <ValidationSummaryCard results={matchList} />
+      )}
+
+      {/* Fuel OPR + Scaled Fuel */}
+      {eventKey && (
+        <FuelOPRCard
+          rows={fuelOprRows}
+          lambda={fuelOprLambda}
+          isLoading={fuelOprLoading}
+        />
       )}
 
       {/* Filters */}

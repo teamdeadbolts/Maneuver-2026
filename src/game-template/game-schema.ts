@@ -393,9 +393,10 @@ export const strategyPresets: Record<string, string[]> = {
  * Mapping types for TBA validation.
  * - 'count': Direct numeric comparison
  * - 'countMatching': Count occurrences matching a specific value
+ * - 'countMatchingAny': Count occurrences matching any value in a list
  * - 'boolean': True/false comparison
  */
-export type TBAMappingType = 'count' | 'countMatching' | 'boolean';
+export type TBAMappingType = 'count' | 'countMatching' | 'countMatchingAny' | 'boolean';
 
 /**
  * Maps game actions/toggles to TBA score breakdown fields for validation.
@@ -410,6 +411,8 @@ export const tbaValidation = {
     categories: [
         { key: 'auto-fuel', label: 'Auto Fuel', phase: 'auto' as const },
         { key: 'teleop-fuel', label: 'Teleop Fuel', phase: 'teleop' as const },
+        { key: 'total-fuel', label: 'Total Fuel', phase: 'teleop' as const },
+        { key: 'auto-climb', label: 'Auto Climb', phase: 'auto' as const },
         { key: 'endgame', label: 'Endgame Climb', phase: 'endgame' as const },
     ],
 
@@ -418,11 +421,21 @@ export const tbaValidation = {
      * TODO: Update with actual 2026 TBA breakdown paths when available
      */
     actionMappings: {
-        // Fuel scoring
-        fuelScored: {
-            tbaPath: 'autoFuelPoints', // Placeholder - update for 2026
+        // Fuel scoring by phase and total
+        autoFuelScored: {
+            tbaPath: 'hubScore.autoCount',
             type: 'count' as TBAMappingType,
             category: 'auto-fuel',
+        },
+        teleopFuelScored: {
+            tbaPath: 'hubScore.teleopCount',
+            type: 'count' as TBAMappingType,
+            category: 'teleop-fuel',
+        },
+        totalFuelScored: {
+            tbaPath: 'hubScore.totalCount',
+            type: 'count' as TBAMappingType,
+            category: 'total-fuel',
         },
     },
 
@@ -430,6 +443,13 @@ export const tbaValidation = {
      * Toggle mappings - maps scouting toggles to TBA breakdown fields
      */
     toggleMappings: {
+        // Auto tower climb success (alliance robot slots)
+        autoClimbSuccess: {
+            tbaPath: ['autoTowerRobot1', 'autoTowerRobot2', 'autoTowerRobot3'],
+            type: 'countMatchingAny' as TBAMappingType,
+            matchValue: ['Level1', 'Level2', 'Level3'],
+            category: 'auto-climb',
+        },
         // Auto mobility
         leftStartZone: {
             tbaPath: ['autoLineRobot1', 'autoLineRobot2', 'autoLineRobot3'],
@@ -439,19 +459,19 @@ export const tbaValidation = {
         },
         // Endgame climb levels
         climbL1: {
-            tbaPath: ['endGameRobot1', 'endGameRobot2', 'endGameRobot3'],
+            tbaPath: ['endGameTowerRobot1', 'endGameTowerRobot2', 'endGameTowerRobot3'],
             type: 'countMatching' as TBAMappingType,
             matchValue: 'Level1',
             category: 'endgame',
         },
         climbL2: {
-            tbaPath: ['endGameRobot1', 'endGameRobot2', 'endGameRobot3'],
+            tbaPath: ['endGameTowerRobot1', 'endGameTowerRobot2', 'endGameTowerRobot3'],
             type: 'countMatching' as TBAMappingType,
             matchValue: 'Level2',
             category: 'endgame',
         },
         climbL3: {
-            tbaPath: ['endGameRobot1', 'endGameRobot2', 'endGameRobot3'],
+            tbaPath: ['endGameTowerRobot1', 'endGameTowerRobot2', 'endGameTowerRobot3'],
             type: 'countMatching' as TBAMappingType,
             matchValue: 'Level3',
             category: 'endgame',

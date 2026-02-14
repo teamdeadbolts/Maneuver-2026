@@ -50,6 +50,12 @@ export interface TeamStatsTemplate extends TeamStats {
     avgTeleopFuelPassed: number;
     avgFuelPassed: number;
     avgTotalFuel: number;
+    avgScaledAutoFuel: number;
+    avgScaledTeleopFuel: number;
+    avgScaledTotalFuel: number;
+    fuelAutoOPR: number;
+    fuelTeleopOPR: number;
+    fuelTotalOPR: number;
     avgAutoClimbStartTimeSec: number;
     avgTeleopClimbStartTimeSec: number;
 
@@ -157,6 +163,12 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 avgTeleopFuelPassed: 0,
                 avgFuelPassed: 0,
                 avgTotalFuel: 0,
+                avgScaledAutoFuel: 0,
+                avgScaledTeleopFuel: 0,
+                avgScaledTotalFuel: 0,
+                fuelAutoOPR: 0,
+                fuelTeleopOPR: 0,
+                fuelTotalOPR: 0,
                 avgAutoClimbStartTimeSec: 0,
                 avgTeleopClimbStartTimeSec: 0,
                 maxAutoFuel: 0,
@@ -205,9 +217,25 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
         const totals = entries.reduce((acc, entry) => {
             const gameData = entry.gameData;
 
+            const scaledMetrics = gameData?.scaledMetrics as {
+                scaledAutoFuel?: number;
+                scaledTeleopFuel?: number;
+            } | undefined;
+
+            const rawAutoFuel = gameData?.auto?.fuelScoredCount || 0;
+            const rawTeleopFuel = gameData?.teleop?.fuelScoredCount || 0;
+            const scaledAutoFuel = typeof scaledMetrics?.scaledAutoFuel === 'number'
+                ? scaledMetrics.scaledAutoFuel
+                : rawAutoFuel;
+            const scaledTeleopFuel = typeof scaledMetrics?.scaledTeleopFuel === 'number'
+                ? scaledMetrics.scaledTeleopFuel
+                : rawTeleopFuel;
+
             // Fuel counts
-            acc.autoFuel += gameData?.auto?.fuelScoredCount || 0;
-            acc.teleopFuel += gameData?.teleop?.fuelScoredCount || 0;
+            acc.autoFuel += rawAutoFuel;
+            acc.teleopFuel += rawTeleopFuel;
+            acc.scaledAutoFuel += scaledAutoFuel;
+            acc.scaledTeleopFuel += scaledTeleopFuel;
             acc.autoFuelPassed += gameData?.auto?.fuelPassedCount || 0;
             acc.teleopFuelPassed += gameData?.teleop?.fuelPassedCount || 0;
             acc.fuelPassed += (gameData?.auto?.fuelPassedCount || 0) + (gameData?.teleop?.fuelPassedCount || 0);
@@ -254,6 +282,8 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
         }, {
             autoFuel: 0,
             teleopFuel: 0,
+            scaledAutoFuel: 0,
+            scaledTeleopFuel: 0,
             autoFuelPassed: 0,
             teleopFuelPassed: 0,
             fuelPassed: 0,
@@ -417,6 +447,12 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
             avgTeleopFuelPassed: Math.round((totals.teleopFuelPassed / matchCount) * 10) / 10,
             avgFuelPassed: Math.round((totals.fuelPassed / matchCount) * 10) / 10,
             avgTotalFuel: Math.round(((totals.autoFuel + totals.teleopFuel) / matchCount) * 10) / 10,
+            avgScaledAutoFuel: Math.round((totals.scaledAutoFuel / matchCount) * 10) / 10,
+            avgScaledTeleopFuel: Math.round((totals.scaledTeleopFuel / matchCount) * 10) / 10,
+            avgScaledTotalFuel: Math.round(((totals.scaledAutoFuel + totals.scaledTeleopFuel) / matchCount) * 10) / 10,
+            fuelAutoOPR: 0,
+            fuelTeleopOPR: 0,
+            fuelTotalOPR: 0,
             avgAutoClimbStartTimeSec: Math.round(avgAutoClimbStartTimeSec * 10) / 10,
             avgTeleopClimbStartTimeSec: Math.round(avgTeleopClimbStartTimeSec * 10) / 10,
             maxAutoFuel: Math.max(...matchResults.map(m => m.autoFuel || 0)),
@@ -487,6 +523,8 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 columns: 2,
                 stats: [
                     { key: 'avgTotalFuel', label: 'Total Fuel', type: 'number', color: 'yellow', subtitle: 'avg per match' },
+                    { key: 'avgScaledTotalFuel', label: 'Scaled Total Fuel', type: 'number', color: 'green', subtitle: 'TBA-adjusted scout avg' },
+                    { key: 'fuelTotalOPR', label: 'Fuel Total OPR', type: 'number', color: 'purple', subtitle: 'alliance decomposition' },
                     { key: 'avgFuelPassed', label: 'Fuel Passed', type: 'number', color: 'blue', subtitle: 'avg per match' },
                 ],
             },
@@ -509,6 +547,8 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 columns: 2,
                 stats: [
                     { key: 'avgAutoFuel', label: 'Fuel Scored', type: 'number', subtitle: 'avg per match' },
+                    { key: 'avgScaledAutoFuel', label: 'Scaled Fuel', type: 'number', color: 'green', subtitle: 'TBA-adjusted scout avg' },
+                    { key: 'fuelAutoOPR', label: 'Fuel OPR', type: 'number', color: 'purple', subtitle: 'alliance decomposition' },
                     { key: 'maxAutoFuel', label: 'Max Fuel Scored', type: 'number', subtitle: 'best match' },
                     { key: 'avgAutoFuelPassed', label: 'Fuel Passed', type: 'number', subtitle: 'avg per match' },
                     { key: 'maxAutoFuelPassed', label: 'Max Fuel Passed', type: 'number', subtitle: 'best match' },
@@ -521,6 +561,8 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 columns: 2,
                 stats: [
                     { key: 'avgTeleopFuel', label: 'Fuel Scored', type: 'number', subtitle: 'avg per match' },
+                    { key: 'avgScaledTeleopFuel', label: 'Scaled Fuel', type: 'number', color: 'green', subtitle: 'TBA-adjusted scout avg' },
+                    { key: 'fuelTeleopOPR', label: 'Fuel OPR', type: 'number', color: 'purple', subtitle: 'alliance decomposition' },
                     { key: 'maxTeleopFuel', label: 'Max Fuel Scored', type: 'number', subtitle: 'best match' },
                     { key: 'avgTeleopFuelPassed', label: 'Fuel Passed', type: 'number', subtitle: 'avg per match' },
                     { key: 'maxTeleopFuelPassed', label: 'Max Fuel Passed', type: 'number', subtitle: 'best match' },

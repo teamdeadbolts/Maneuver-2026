@@ -63,7 +63,7 @@ import logo from "../src/assets/Maneuver Wordmark Vertical.png";
 import { generateDemoEvent, generateDemoEventScheduleOnly } from "@/core/lib/demoDataGenerator";
 import { generate2026GameData } from "@/game-template/demoDataGenerator2026";
 import { db, pitDB, gameDB } from "@/db";
-import { clearEventCache, getCachedTBAEventMatches } from "@/core/lib/tbaCache";
+import { clearEventCache, clearEventValidationResults, getCachedTBAEventMatches } from "@/core/lib/tbaCache";
 
 // Mock implementations for missing template parts
 const mockConfig = { year: 2026, gameName: "REBUILT", scoring: { auto: {}, teleop: {}, endgame: {} } };
@@ -82,6 +82,7 @@ const loadDemoData = async () => {
     clearExisting: true,
     gameDataGenerator: generate2026GameData,
     includePlayoffs: true,
+    seedFakeValidationResults: false,
   });
   
   // Update local storage for demo event
@@ -130,6 +131,7 @@ const clearDemoData = async () => {
   await gameDB.predictions.where('eventKey').equals(DEMO_EVENT_KEY).delete();
   await gameDB.scoutAchievements.clear();
   await clearEventCache(DEMO_EVENT_KEY);
+  await clearEventValidationResults(DEMO_EVENT_KEY);
   
   // Clear from local storage
   const eventsList = JSON.parse(localStorage.getItem('eventsList') || '[]');
@@ -183,7 +185,7 @@ function App() {
             <HomePage 
               logo={logo} 
               appName="Maneuver 2026"
-              version="2026.0.3"
+              version="2026.0.4"
               onLoadDemoData={loadDemoData}
               onLoadDemoScheduleOnly={loadDemoScheduleOnly}
               onClearData={clearDemoData}

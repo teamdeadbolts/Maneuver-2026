@@ -20,6 +20,8 @@ import type {
     AllianceValidation,
     TeamValidation,
     MatchFilters,
+    ValidationThresholds,
+    Discrepancy,
 } from '@/core/lib/matchValidationTypes';
 import { DEFAULT_VALIDATION_CONFIG } from '@/core/lib/matchValidationTypes';
 import {
@@ -335,6 +337,16 @@ export function useMatchValidation({
             const redDiscrepancies = compareAllianceData(redScouted, redTBA, config);
             const blueDiscrepancies = compareAllianceData(blueScouted, blueTBA, config);
 
+            const redScoreDiscrepancy = createTotalScoreDiscrepancy(redScouted, redTBA, config);
+            if (redScoreDiscrepancy) {
+                redDiscrepancies.push(redScoreDiscrepancy);
+            }
+
+            const blueScoreDiscrepancy = createTotalScoreDiscrepancy(blueScouted, blueTBA, config);
+            if (blueScoreDiscrepancy) {
+                blueDiscrepancies.push(blueScoreDiscrepancy);
+            }
+
             // Build alliance validation results
             const redAlliance = buildAllianceValidation('red', redScouted, redTBA, redDiscrepancies, config);
             const blueAlliance = buildAllianceValidation('blue', blueScouted, blueTBA, blueDiscrepancies, config);
@@ -369,7 +381,7 @@ export function useMatchValidation({
                 totalDiscrepancies,
                 criticalDiscrepancies,
                 warningDiscrepancies,
-                flaggedForReview: criticalDiscrepancies >= config.autoFlagThreshold,
+                flaggedForReview: criticalDiscrepancies > 0 || warningDiscrepancies > 0,
                 requiresReScout: criticalDiscrepancies >= config.requireReScoutThreshold,
                 validatedAt: Date.now(),
             };
@@ -609,6 +621,42 @@ function aggregateScoutingData(
             }
         }
 
+        // Derive phase-specific fuel fields for validation mappings
+        const autoPhase = (gameData.auto && typeof gameData.auto === 'object')
+            ? (gameData.auto as Record<string, unknown>)
+            : null;
+        const teleopPhase = (gameData.teleop && typeof gameData.teleop === 'object')
+            ? (gameData.teleop as Record<string, unknown>)
+            : null;
+
+        const autoFuel =
+            (typeof autoPhase?.fuelScoredCount === 'number' ? autoPhase.fuelScoredCount : undefined) ??
+            (typeof autoPhase?.fuelScored === 'number' ? autoPhase.fuelScored : undefined) ??
+            (typeof flatGameData.autoFuelScored === 'number' ? flatGameData.autoFuelScored : undefined) ??
+            (typeof flatGameData.autoFuelScoredCount === 'number' ? flatGameData.autoFuelScoredCount : undefined) ??
+            0;
+
+        const teleopFuel =
+            (typeof teleopPhase?.fuelScoredCount === 'number' ? teleopPhase.fuelScoredCount : undefined) ??
+            (typeof teleopPhase?.fuelScored === 'number' ? teleopPhase.fuelScored : undefined) ??
+            (typeof flatGameData.teleopFuelScored === 'number' ? flatGameData.teleopFuelScored : undefined) ??
+            (typeof flatGameData.teleopFuelScoredCount === 'number' ? flatGameData.teleopFuelScoredCount : undefined) ??
+            0;
+
+        flatGameData.autoFuelScored = autoFuel;
+        flatGameData.teleopFuelScored = teleopFuel;
+        flatGameData.totalFuelScored = autoFuel + teleopFuel;
+
+        const autoClimbSuccess =
+            autoPhase?.autoClimbL1 === true ||
+            autoPhase?.autoClimbL2 === true ||
+            autoPhase?.autoClimbL3 === true ||
+            flatGameData.autoClimbL1 === true ||
+            flatGameData.autoClimbL2 === true ||
+            flatGameData.autoClimbL3 === true;
+
+        flatGameData.autoClimbSuccess = autoClimbSuccess;
+
         console.log('[Aggregate] Flattened gameData:', flatGameData);
 
         // Sum actions
@@ -657,8 +705,7 @@ function buildAllianceValidation(
 
     const status = determineOverallStatus(criticalCount, warningCount, config);
 
-    // Calculate total scouted points (simplified - would need game-specific logic)
-    const totalScoutedPoints = Object.values(scouted.actions).reduce((a, b) => a + b, 0);
+    const totalScoutedPoints = calculateScoutedAlliancePoints(scouted);
 
     return {
         alliance,
@@ -725,9 +772,72 @@ function determineOverallStatus(
     config: ValidationConfig
 ): import('@/core/lib/matchValidationTypes').ValidationStatus {
     if (criticalCount >= config.requireReScoutThreshold) return 'failed';
-    if (criticalCount >= config.autoFlagThreshold) return 'flagged';
+    if (criticalCount > 0) return 'flagged';
     if (warningCount > 0) return 'flagged';
     return 'passed';
+}
+
+function calculateScoutedAlliancePoints(scouted: ScoutedAllianceData): number {
+    const autoFuel = scouted.actions.autoFuelScored ?? 0;
+    const teleopFuel = scouted.actions.teleopFuelScored ?? 0;
+    const autoClimbSuccess = scouted.toggles.autoClimbSuccess ?? 0;
+    const climbL1 = scouted.toggles.climbL1 ?? 0;
+    const climbL2 = scouted.toggles.climbL2 ?? 0;
+    const climbL3 = scouted.toggles.climbL3 ?? 0;
+
+    return autoFuel + teleopFuel + (autoClimbSuccess * 15) + (climbL1 * 10) + (climbL2 * 20) + (climbL3 * 30);
+}
+
+function calculateDiscrepancySeverity(
+    absoluteDiff: number,
+    percentDiff: number,
+    thresholds: ValidationThresholds
+): Discrepancy['severity'] {
+    if (absoluteDiff >= thresholds.criticalAbsolute) return 'critical';
+    if (absoluteDiff >= thresholds.warningAbsolute) return 'warning';
+    if (absoluteDiff >= thresholds.minorAbsolute) return 'minor';
+
+    if (percentDiff >= thresholds.critical) return 'critical';
+    if (percentDiff >= thresholds.warning) return 'warning';
+    if (percentDiff >= thresholds.minor) return 'minor';
+
+    return 'none';
+}
+
+function createTotalScoreDiscrepancy(
+    scouted: ScoutedAllianceData,
+    tba: import('@/core/lib/matchValidationTypes').TBAAllianceData,
+    config: ValidationConfig
+): Discrepancy | null {
+    const totalScoutedPoints = calculateScoutedAlliancePoints(scouted);
+    const tbaTotalPoints = tba.totalPoints;
+    const difference = Math.abs(totalScoutedPoints - tbaTotalPoints);
+
+    if (difference === 0) {
+        return null;
+    }
+
+    const percentDiff = tbaTotalPoints > 0 ? (difference / tbaTotalPoints) * 100 : 100;
+    const thresholds = config.categoryThresholds?.['total-score'] ?? config.thresholds;
+    const severity = calculateDiscrepancySeverity(difference, percentDiff, thresholds);
+
+    if (severity === 'none') {
+        return null;
+    }
+
+    const direction = totalScoutedPoints > tbaTotalPoints ? 'over-counted' : 'under-counted';
+
+    return {
+        category: 'total-score',
+        field: 'totalScore',
+        fieldLabel: 'Total Score',
+        scoutedValue: totalScoutedPoints,
+        tbaValue: tbaTotalPoints,
+        difference,
+        percentDiff,
+        severity,
+        message: `Total Score: Scouted ${totalScoutedPoints}, TBA ${tbaTotalPoints} (${direction} by ${difference})`,
+    };
 }
 
 /**
