@@ -385,7 +385,7 @@ function AutoFieldMapContent({
         if (!element) return;
 
         // 1. Handle Persistent Stuck Resolution
-        if (stuckStarts[elementKey]) {
+        if (!recordingMode && stuckStarts[elementKey]) {
             const startTime = stuckStarts[elementKey]!;
             const obstacleType = elementKey.includes('trench') ? 'trench' : 'bump';
             const stuckDuration = Math.min(Date.now() - startTime, AUTO_PHASE_DURATION_MS);
@@ -411,7 +411,7 @@ function AutoFieldMapContent({
         }
 
         // 2. Handle Potential Stuck Promotion (Second tap within 5s)
-        if (stuckElementKey === elementKey) {
+        if (!recordingMode && stuckElementKey === elementKey) {
             if (stuckTimeoutRef.current) {
                 clearTimeout(stuckTimeoutRef.current);
                 stuckTimeoutRef.current = null;
@@ -464,12 +464,14 @@ function AutoFieldMapContent({
                 addWaypoint('traversal', type, position);
 
                 // Enter potential stuck ("Stuck?") phase for 5s
-                if (stuckTimeoutRef.current) clearTimeout(stuckTimeoutRef.current);
-                setStuckElementKey(elementKey);
-                stuckTimeoutRef.current = setTimeout(() => {
-                    setStuckElementKey(null);
-                    stuckTimeoutRef.current = null;
-                }, 5000);
+                if (!recordingMode) {
+                    if (stuckTimeoutRef.current) clearTimeout(stuckTimeoutRef.current);
+                    setStuckElementKey(elementKey);
+                    stuckTimeoutRef.current = setTimeout(() => {
+                        setStuckElementKey(null);
+                        stuckTimeoutRef.current = null;
+                    }, 5000);
+                }
                 break;
             }
             case 'pass':
@@ -720,8 +722,8 @@ function AutoFieldMapContent({
                                             alliance={alliance}
                                             isFieldRotated={isFieldRotated}
                                             containerWidth={canvasDimensions.width}
-                                            isStuck={isPersistentStuck}
-                                            isPotentialStuck={stuckElementKey === key}
+                                            isStuck={recordingMode ? false : isPersistentStuck}
+                                            isPotentialStuck={recordingMode ? false : stuckElementKey === key}
                                             isDisabled={isPopupActive || (isAnyStuck && !isPersistentStuck)}
                                         />
                                     );
@@ -837,6 +839,8 @@ function AutoFieldMapContent({
                             setFuelHistory(prev => prev.slice(0, -1));
                         }}
                         onClimbResultSelect={setClimbResult}
+                        allowClimbFail={!recordingMode}
+                        skipClimbOutcomeSelection={true}
                         onConfirm={(selectedClimbStartTimeSecRemaining) => {
                             let delta = 0;
                             let label = '';

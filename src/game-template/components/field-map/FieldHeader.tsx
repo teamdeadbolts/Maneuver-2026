@@ -113,20 +113,24 @@ function getZoneLabel(zone: ZoneType): string {
 function getZoneClassName(zone: ZoneType, alliance: 'red' | 'blue'): string {
     switch (zone) {
         case 'allianceZone':
-            return alliance === 'red' ? 'bg-red-500/20 text-red-300' : 'bg-blue-500/20 text-blue-300';
+            return alliance === 'red'
+                ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300'
+                : 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300';
         case 'neutralZone':
-            return 'bg-yellow-500/20 text-yellow-300';
+            return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300';
         case 'opponentZone':
-            return alliance === 'red' ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-300';
+            return alliance === 'red'
+                ? 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300'
+                : 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300';
     }
 }
 
 function getStatColorClass(color: FieldHeaderStat['color']): string {
     switch (color) {
-        case 'green': return 'bg-green-600/20 text-green-400 border-green-500/30';
-        case 'purple': return 'bg-purple-600/20 text-purple-400 border-purple-500/30';
-        case 'yellow': return 'bg-yellow-600/20 text-yellow-400 border-yellow-500/30';
-        case 'slate': return 'bg-slate-800/50 text-slate-300 border-slate-700/50';
+        case 'green': return 'bg-green-100 text-green-700 border-green-300 dark:bg-green-600/20 dark:text-green-400 dark:border-green-500/30';
+        case 'purple': return 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-600/20 dark:text-purple-400 dark:border-purple-500/30';
+        case 'yellow': return 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-600/20 dark:text-yellow-400 dark:border-yellow-500/30';
+        case 'slate': return 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50';
     }
 }
 
@@ -178,12 +182,12 @@ export function FieldHeader({
                                 variant="ghost"
                                 size="icon"
                                 onClick={onBack}
-                                className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800"
+                                className="h-8 w-8 text-slate-600 hover:text-slate-900 hover:bg-slate-200 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800"
                             >
                                 <ChevronLeft className="h-5 w-5" />
                             </Button>
                         )}
-                        <span className="text-sm mr-2 font-bold text-slate-200">
+                        <span className="text-sm mr-2 font-bold text-slate-700 dark:text-slate-200">
                             {phaseLabel}
                         </span>
                     </div>
@@ -195,15 +199,15 @@ export function FieldHeader({
 
                 {/* Match Info */}
                 {(matchNumber || teamNumber) && (
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-800/50 rounded-md border border-slate-700/50 shrink-0">
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-100 rounded-md border border-slate-300 dark:bg-slate-800/50 dark:border-slate-700/50 shrink-0">
                         {matchNumber && (
-                            <span className="text-[10px] md:text-xs font-bold text-slate-400">
+                            <span className="text-[10px] md:text-xs font-bold text-slate-700 dark:text-slate-400">
                                 {formatMatchLabel(matchNumber, matchType)}
                             </span>
                         )}
-                        {matchNumber && teamNumber && <div className="w-px h-3 bg-slate-800/50" />}
+                        {matchNumber && teamNumber && <div className="w-px h-3 bg-slate-300 dark:bg-slate-700" />}
                         {teamNumber && (
-                            <span className="text-[10px] md:text-xs font-bold text-slate-400">
+                            <span className="text-[10px] md:text-xs font-bold text-slate-700 dark:text-slate-400">
                                 {teamNumber}
                             </span>
                         )}
@@ -212,7 +216,7 @@ export function FieldHeader({
 
                 {/* Custom Header Label */}
                 {headerLabel && (
-                    <div className="max-w-48 md:max-w-72 truncate px-2 py-1 bg-slate-800/50 rounded-md border border-slate-700/50 text-[10px] md:text-xs font-semibold text-slate-300 shrink-0">
+                    <div className="max-w-48 md:max-w-72 truncate px-2 py-1 bg-slate-100 rounded-md border border-slate-300 text-[10px] md:text-xs font-semibold text-slate-700 dark:bg-slate-800/50 dark:border-slate-700/50 dark:text-slate-300 shrink-0">
                         {headerLabel}
                     </div>
                 )}
@@ -274,7 +278,7 @@ export function FieldHeader({
                         size="icon"
                         onClick={onUndo}
                         disabled={!canUndo}
-                        className={cn("h-8 w-8 hover:bg-slate-800 lg:hidden", canUndo && "text-red-400 animate-in fade-in zoom-in duration-300")}
+                        className={cn("h-8 w-8 hover:bg-slate-200 dark:hover:bg-slate-800 lg:hidden", canUndo && "text-red-500 dark:text-red-400 animate-in fade-in zoom-in duration-300")}
                     >
                         <Undo2 className="h-4 w-4" />
                     </Button>
@@ -287,7 +291,7 @@ export function FieldHeader({
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 hover:bg-slate-800"
+                                className="h-8 w-8 hover:bg-slate-200 dark:hover:bg-slate-800"
                             >
                                 <MoreVertical className="h-4 w-4" />
                             </Button>
@@ -382,7 +386,7 @@ export function FieldHeader({
                             size="icon"
                             onClick={onUndo}
                             disabled={!canUndo}
-                            className={cn("h-8 w-8 hover:bg-slate-800", canUndo && "text-red-400 animate-in fade-in zoom-in duration-300")}
+                            className={cn("h-8 w-8 hover:bg-slate-200 dark:hover:bg-slate-800", canUndo && "text-red-500 dark:text-red-400 animate-in fade-in zoom-in duration-300")}
                         >
                             <Undo2 className="h-4 w-4" />
                         </Button>
@@ -397,7 +401,7 @@ export function FieldHeader({
                             variant="ghost"
                             size="icon"
                             onClick={toggleFieldOrientation}
-                            className={cn("h-8 w-8 hover:bg-slate-800", isFieldRotated && "text-blue-400")}
+                            className={cn("h-8 w-8 hover:bg-slate-200 dark:hover:bg-slate-800", isFieldRotated && "text-blue-500 dark:text-blue-400")}
                             title={isFieldRotated ? "Reset field orientation" : "Rotate field 180°"}
                         >
                             <RotateCw className={cn("h-4 w-4 transition-transform", isFieldRotated && "rotate-180")} />
@@ -410,7 +414,7 @@ export function FieldHeader({
                             variant="ghost"
                             size="icon"
                             onClick={onFullscreenToggle}
-                            className="h-8 w-8 hover:bg-slate-800"
+                            className="h-8 w-8 hover:bg-slate-200 dark:hover:bg-slate-800"
                         >
                             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                         </Button>

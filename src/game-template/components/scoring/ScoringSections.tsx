@@ -5,8 +5,8 @@
  * Teleop phase: Uses TeleopFieldMap for zone-based field tracking
  */
 
-import { AutoFieldMap } from "@/game-template/components/auto-path";
-import { TeleopFieldMap } from "@/game-template/components/teleop-path";
+import { AutoFieldMap } from "@/game-template/components/auto-path/AutoFieldMap";
+import { TeleopFieldMap } from "@/game-template/components/teleop-path/TeleopFieldMap";
 
 interface ScoringSectionsProps {
   phase: 'auto' | 'teleop';

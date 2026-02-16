@@ -836,7 +836,7 @@ async function cacheAndStoreDemoSchedule(
     console.log(`  ✓ Cached ${tbaMatches.length} matches as TBA data`);
 
     const matchData = matches.map(match => ({
-        matchNumber: match.matchNumber,
+        matchNum: match.matchNumber,
         redAlliance: match.redTeams,
         blueAlliance: match.blueTeams
     }));

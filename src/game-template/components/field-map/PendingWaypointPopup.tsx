@@ -35,6 +35,8 @@ export interface PendingWaypointPopupProps {
     // Climb callbacks
     climbResult: ClimbResult | null;
     onClimbResultSelect: (result: ClimbResult) => void;
+    allowClimbFail?: boolean;
+    skipClimbOutcomeSelection?: boolean;
 
     // Teleop climb level (optional - only Teleop uses this)
     climbWithLevels?: boolean;
@@ -61,6 +63,8 @@ export function PendingWaypointPopup({
     onFuelUndo,
     climbResult,
     onClimbResultSelect,
+    allowClimbFail = true,
+    skipClimbOutcomeSelection = false,
     climbWithLevels = false,
     climbLevel,
     onClimbLevelSelect,
@@ -100,7 +104,9 @@ export function PendingWaypointPopup({
     const canConfirm = isClimb
         ? (isSelectingClimbTime
             ? climbStartTimeSecRemaining !== null
-            : (climbStartTimeSecRemaining !== null && (climbWithLevels ? climbLevel !== undefined && climbResult !== null : climbResult !== null)))
+            : (skipClimbOutcomeSelection
+                ? climbStartTimeSecRemaining !== null
+                : (climbStartTimeSecRemaining !== null && (climbWithLevels ? climbLevel !== undefined && climbResult !== null : climbResult !== null))))
         : accumulatedFuel > 0;
 
     return (
@@ -200,9 +206,12 @@ export function PendingWaypointPopup({
                                     </Button>
                                 ))}
                             </div>
-                        ) : (
+                        ) : !skipClimbOutcomeSelection && (
                             // Success/Fail selection (both phases)
-                            <div className="grid grid-cols-2 gap-4 p-2">
+                            <div className={cn(
+                                "gap-4 p-2",
+                                allowClimbFail ? "grid grid-cols-2" : "grid grid-cols-1"
+                            )}>
                                 <Button
                                     variant={climbResult === 'success' ? 'default' : 'outline'}
                                     onClick={() => onClimbResultSelect('success')}
@@ -214,17 +223,19 @@ export function PendingWaypointPopup({
                                     <Check className="h-6 w-6 font-bold" />
                                     <span className="font-bold text-sm">SUCCESS</span>
                                 </Button>
-                                <Button
-                                    variant={climbResult === 'fail' ? 'default' : 'outline'}
-                                    onClick={() => onClimbResultSelect('fail')}
-                                    className={cn(
-                                        "h-20 flex flex-col gap-1 items-center justify-center border-2 transition-all rounded-xl",
-                                        climbResult === 'fail' && "bg-red-600 hover:bg-red-700 border-red-400 text-white shadow-lg"
-                                    )}
-                                >
-                                    <X className="h-6 w-6 font-bold" />
-                                    <span className="font-bold text-sm">FAIL</span>
-                                </Button>
+                                {allowClimbFail && (
+                                    <Button
+                                        variant={climbResult === 'fail' ? 'default' : 'outline'}
+                                        onClick={() => onClimbResultSelect('fail')}
+                                        className={cn(
+                                            "h-20 flex flex-col gap-1 items-center justify-center border-2 transition-all rounded-xl",
+                                            climbResult === 'fail' && "bg-red-600 hover:bg-red-700 border-red-400 text-white shadow-lg"
+                                        )}
+                                    >
+                                        <X className="h-6 w-6 font-bold" />
+                                        <span className="font-bold text-sm">FAIL</span>
+                                    </Button>
+                                )}
                             </div>
                         )
                     ) : (
@@ -263,7 +274,7 @@ export function PendingWaypointPopup({
                     </Button>
 
                     <div className="flex flex-row gap-3">
-                        {isClimb && !isSelectingClimbTime && (
+                        {isClimb && !isSelectingClimbTime && !skipClimbOutcomeSelection && (
                             <Button
                                 variant="secondary"
                                 size="icon"
@@ -290,6 +301,10 @@ export function PendingWaypointPopup({
                             size="icon"
                             onClick={() => {
                                 if (isClimb && isSelectingClimbTime) {
+                                    if (skipClimbOutcomeSelection) {
+                                        onConfirm(climbStartTimeSecRemaining);
+                                        return;
+                                    }
                                     setIsSelectingClimbTime(false);
                                     return;
                                 }
