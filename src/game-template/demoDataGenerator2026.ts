@@ -106,6 +106,28 @@ function randomInt(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+function pickShotType(phase: 'auto' | 'teleop', skillLevel: string): 'onTheMove' | 'stationary' {
+    if (phase === 'auto') {
+        const movingChanceBySkill: Record<string, number> = {
+            elite: 0.7,
+            strong: 0.56,
+            average: 0.32,
+            developing: 0.14,
+        };
+        const movingChance = movingChanceBySkill[skillLevel] ?? 0.3;
+        return Math.random() < movingChance ? 'onTheMove' : 'stationary';
+    }
+
+    const movingChanceBySkill: Record<string, number> = {
+        elite: 0.82,
+        strong: 0.66,
+        average: 0.4,
+        developing: 0.18,
+    };
+    const movingChance = movingChanceBySkill[skillLevel] ?? 0.4;
+    return Math.random() < movingChance ? 'onTheMove' : 'stationary';
+}
+
 /**
  * Generate realistic 2026 game data based on team skill profile
  */
@@ -171,6 +193,7 @@ export const generate2026GameData: GameDataGenerator = (profile, matchKey) => {
             position: jitter(autoScoreSpot.pos, autoScoreSpot.spread),
             fuelDelta: -burst,
             amountLabel: `${burst}`,
+            shotType: pickShotType('auto', profile.skillLevel),
         });
         remainingAutoFuel -= burst;
         autoScoreTimestamp += randomInt(700, 1400);
@@ -284,6 +307,7 @@ export const generate2026GameData: GameDataGenerator = (profile, matchKey) => {
             position: jitter(teleopScoreSpot.pos, teleopScoreSpot.spread * 1.1),
             fuelDelta: -burst,
             amountLabel: `${burst}`,
+            shotType: pickShotType('teleop', profile.skillLevel),
         });
         remainingTeleopFuel -= burst;
         teleopScoreTimestamp += traversalArchetype === 'bump'
