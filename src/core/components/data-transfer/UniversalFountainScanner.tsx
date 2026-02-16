@@ -323,8 +323,8 @@ export const UniversalFountainScanner = ({
       }
 
       // Add debugging when we're getting close to completion but decoder isn't ready
-      if (received > packet.k && progressPercentage > 90) {
-        addDebugMsg(`🔍 High packet count but no completion yet: k=${packet.k}, received=${received}`);
+      if (packetK > 0 && received > packetK && progressPercentage > 90) {
+        addDebugMsg(`🔍 High packet count but no completion yet: k=${packetK}, received=${received}`);
         addDebugMsg(`🔍 Decoder state check needed - may need more packets than theoretical minimum`);
 
         // Alert user if we've scanned significantly more than expected
