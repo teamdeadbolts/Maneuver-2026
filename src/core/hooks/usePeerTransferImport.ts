@@ -8,7 +8,8 @@ import { toast } from 'sonner';
 import { detectConflicts, type ConflictInfo } from '@/core/lib/scoutingDataUtils';
 import type { ScoutingEntryBase } from '@/core/types/scouting-entry';
 import { debugLog } from '@/core/lib/peerTransferUtils';
-import { db, pitDB, saveScoutingEntry } from '@/core/db/database';
+import { deleteScoutingEntry, savePitScoutingEntries, saveScoutingEntry } from '@/core/db/database';
+import { findExistingEntry, loadScoutingData } from '@/db';
 
 interface ReceivedDataEntry {
     scoutName: string;
@@ -90,7 +91,8 @@ export function usePeerTransferImport(options: UsePeerTransferImportOptions) {
 
     const importPitScoutingData = useCallback(async (pitData: { entries?: unknown[] }, scoutName: string) => {
         if (pitData.entries && Array.isArray(pitData.entries)) {
-            await pitDB.pitScoutingData.bulkPut(pitData.entries as never[]);
+            // await pitDB.pitScoutingData.bulkPut(pitData.entries as never[]);
+            await savePitScoutingEntries(pitData.entries as never[]);
             toast.success(`Imported ${pitData.entries.length} pit scouting entries from ${scoutName}`);
         }
     }, []);
@@ -115,7 +117,8 @@ export function usePeerTransferImport(options: UsePeerTransferImportOptions) {
         }
 
         // Check local database before conflict detection
-        const localCount = await db.scoutingData.count();
+        // const localCount = await db.scoutingData.count();
+        const localCount = await loadScoutingData().then(entries => entries.length);
         console.log('📊 Local database count BEFORE import:', localCount);
 
         // Detect conflicts
@@ -150,17 +153,19 @@ export function usePeerTransferImport(options: UsePeerTransferImportOptions) {
                 const alliance = entry.allianceColor;
                 const eventKey = entry.eventKey;
 
-                const existing = await db.scoutingData
-                    .toArray()
-                    .then((entries: ScoutingEntryBase[]) => entries.find(e =>
-                        e.matchNumber === matchNumber &&
-                        e.teamNumber === teamNumber &&
-                        e.allianceColor === alliance &&
-                        e.eventKey === eventKey
-                    ));
+                // const existing = await db.scoutingData
+                //     .toArray()
+                //     .then((entries: ScoutingEntryBase[]) => entries.find(e =>
+                //         e.matchNumber === matchNumber &&
+                //         e.teamNumber === teamNumber &&
+                //         e.allianceColor === alliance &&
+                //         e.eventKey === eventKey
+                //     ));
+                const existing = await findExistingEntry(matchNumber, teamNumber, alliance, eventKey);
 
                 if (existing) {
-                    await db.scoutingData.delete(existing.id);
+                    // await db.scoutingData.delete(existing.id);
+                    await deleteScoutingEntry(existing.id);
                 }
                 await saveScoutingEntry(entry);
             }

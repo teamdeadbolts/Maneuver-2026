@@ -5,8 +5,8 @@ import {
   detectConflicts,
   type ConflictInfo
 } from "@/core/lib/scoutingDataUtils";
-import type { ScoutingEntryBase } from "@/types/scouting-entry";
-import { db } from "@/core/db/database";
+import type { ImportResult, ScoutingEntryBase } from "@/types/scouting-entry";
+import { apiRequest } from "@/core/db/database";
 
 export type UploadMode = "append" | "overwrite" | "smart-merge";
 
@@ -26,152 +26,130 @@ export interface UploadResult {
   };
 }
 
+/**
+ * Handles uploading scouting data from an external source (JSON/QR)
+ * Offloads validation and merging logic to the Postgres API
+ */
 export const handleScoutingDataUpload = async (jsonData: unknown, mode: UploadMode): Promise<UploadResult> => {
-  // Validate scouting data structure - expecting ScoutingEntryBase format
+  // 1. Basic Format Validation
   let newEntries: ScoutingEntryBase[] = [];
-  
   if (
     typeof jsonData === "object" &&
     jsonData !== null &&
     "entries" in jsonData &&
-    Array.isArray((jsonData as RawScoutingData).entries)
+    Array.isArray((jsonData as any).entries)
   ) {
-    newEntries = (jsonData as RawScoutingData).entries;
+    newEntries = (jsonData as any).entries;
   } else {
-    toast.error("Invalid scouting data format. Expected { entries: ScoutingEntryBase[] }");
+    toast.error("Invalid scouting data format.");
     return { hasConflicts: false };
   }
-  
+
   if (newEntries.length === 0) {
     toast.error("No valid scouting data found");
     return { hasConflicts: false };
   }
-  
-  // Handle different modes
+
+  // 2. Handle Simple Modes via existing API endpoints
   if (mode === "overwrite") {
-    // Clear all existing data and save new data
-    await saveScoutingData(newEntries);
-    toast.success(`Overwritten with ${newEntries.length} scouting entries`);
+    await saveScoutingData(newEntries); // Our new API-based save function
+    toast.success(`Overwritten with ${newEntries.length} entries`);
     return { hasConflicts: false };
   }
-  
+
   if (mode === "append") {
-    // Add all new entries, replacing any with matching IDs
-    // Use case: Combining data from multiple scouts or uploading corrections
-    const existingScoutingData = await loadScoutingData();
-    const combined = [...existingScoutingData, ...newEntries];
-    await saveScoutingData(combined);
-    toast.success(
-      `Uploaded ${newEntries.length} entries (${existingScoutingData.length} existing). Total: ${combined.length} before deduplication.`
-    );
+    // We use the specialized import endpoint to let Postgres handle deduplication
+    const result = await apiRequest<ImportResult>('/matches/import', {
+      method: 'POST',
+      body: JSON.stringify({ entries: newEntries, mode: 'append' }),
+    });
+    toast.success(`Appended data. Total imported: ${result.importedCount}`);
     return { hasConflicts: false };
   }
-  
+
+  // 3. Smart Merge via API
   if (mode === "smart-merge") {
-    // Use field-based conflict detection for reliable cross-device matching
+    // Call our server-side conflict detector
     const conflictResult = await detectConflicts(newEntries);
     
-    
     const results = { added: 0, replaced: 0 };
+
+    // Process Auto-Imports and Auto-Replaces in a single batch
+    const autoProcessList = [...conflictResult.autoImport, ...conflictResult.autoReplace];
     
-    // Auto-import: Save new entries
-    if (conflictResult.autoImport.length > 0) {
-      await db.scoutingData.bulkPut(conflictResult.autoImport as never[]);
+    if (autoProcessList.length > 0) {
+      await apiRequest('/matches/bulk-replace', {
+        method: 'POST',
+        body: JSON.stringify({ entries: autoProcessList }),
+      });
       results.added = conflictResult.autoImport.length;
-    }
-    
-    // Auto-replace: Delete old entries and save new ones
-    if (conflictResult.autoReplace.length > 0) {
-      for (const entry of conflictResult.autoReplace) {
-        // Find and delete existing entry by ID
-        const existingEntries = (await db.scoutingData.toArray()) as unknown as ScoutingEntryBase[];
-        const existing = existingEntries.find(e => 
-          e.matchNumber === entry.matchNumber &&
-          e.teamNumber === entry.teamNumber &&
-          e.allianceColor === entry.allianceColor &&
-          e.eventKey === entry.eventKey
-        );
-        
-        if (existing) {
-          await db.scoutingData.delete(existing.id);
-        }
-        
-        // Save new entry
-        await db.scoutingData.put(entry as never);
-      }
       results.replaced = conflictResult.autoReplace.length;
     }
-    
-    // Handle conflicts: Return them for user to resolve via dialog
+
+    // Return to UI for manual review if necessary
     if (conflictResult.conflicts.length > 0 || conflictResult.batchReview.length > 0) {
-      // Show initial toast about auto-processed entries
-      if (results.added > 0 || results.replaced > 0) {
-        const batchMessage = conflictResult.batchReview.length > 0 ? ` ${conflictResult.batchReview.length} duplicates need review.` : '';
-        const conflictMessage = conflictResult.conflicts.length > 0 ? ` ${conflictResult.conflicts.length} conflicts need review.` : '';
-        toast.success(
-          `Imported ${results.added} new entries, ` +
-          `Replaced ${results.replaced} existing entries.` +
-          batchMessage + conflictMessage
-        );
-      }
+      const batchMessage = conflictResult.batchReview.length > 0 ? ` ${conflictResult.batchReview.length} need review.` : '';
+      const conflictMessage = conflictResult.conflicts.length > 0 ? ` ${conflictResult.conflicts.length} need review.` : '';
       
-      // Return batch review first if present, otherwise conflicts
-      if (conflictResult.batchReview.length > 0) {
-        return {
-          hasConflicts: false,
-          hasBatchReview: true,
-          batchReviewEntries: conflictResult.batchReview,
-          conflicts: conflictResult.conflicts.length > 0 ? conflictResult.conflicts : undefined,
-          autoProcessed: results
-        };
-      }
-      
+      toast.success(`Processed ${results.added + results.replaced} entries.` + batchMessage + conflictMessage);
+
       return {
-        hasConflicts: true,
+        hasConflicts: conflictResult.conflicts.length > 0,
+        hasBatchReview: conflictResult.batchReview.length > 0,
+        batchReviewEntries: conflictResult.batchReview,
         conflicts: conflictResult.conflicts,
         autoProcessed: results
       };
     }
-    
-    // No conflicts - show completion message
-    const totalExisting = await db.scoutingData.count();
-    
-    toast.success(
-      `Smart merge complete! ${results.added} new entries added, ${results.replaced} entries replaced (Total: ${totalExisting})`
-    );
+
+    toast.success(`Smart merge complete! ${results.added} new added, ${results.replaced} replaced.`);
     return { hasConflicts: false, autoProcessed: results };
   }
-  
+
   return { hasConflicts: false };
 };
 
 // Apply conflict resolutions after user makes decisions
+/**
+ * Applies manual conflict resolutions to the Postgres database.
+ * Sends only the 'replace' decisions to the server in a single batch.
+ */
 export const applyConflictResolutions = async (
   conflicts: ConflictInfo[],
   resolutions: Map<string, 'replace' | 'skip'>
 ): Promise<{ replaced: number; skipped: number }> => {
-  let replaced = 0;
-  let skipped = 0;
-  
+  let replacedCount = 0;
+  let skippedCount = 0;
+
+  // Filter out only the entries where the user chose 'replace'
+  const entriesToUpsert: ScoutingEntryBase[] = [];
+
   for (const conflict of conflicts) {
     const conflictKey = `${conflict.local.matchNumber}-${conflict.local.teamNumber}-${conflict.local.eventKey}`;
     const decision = resolutions.get(conflictKey);
-    
+
     if (decision === 'replace') {
-      // Delete old entry and save new one
-      console.log('Replacing entry:', {
-        conflictKey,
-        incomingData: conflict.incoming,
-        localId: conflict.local.id
-      });
-      await db.scoutingData.delete(conflict.local.id);
-      await db.scoutingData.put(conflict.incoming as never);
-      replaced++;
+      entriesToUpsert.push(conflict.incoming);
+      replacedCount++;
     } else {
-      // Skip - keep local, do nothing
-      skipped++;
+      skippedCount++;
     }
   }
-  
-  return { replaced, skipped };
+
+  try {
+    if (entriesToUpsert.length > 0) {
+      // Use the bulk-replace endpoint to update Postgres in one transaction
+      await apiRequest('/matches/bulk-replace', {
+        method: 'POST',
+        body: JSON.stringify({ entries: entriesToUpsert }),
+      });
+      
+      console.log(`Successfully replaced ${replacedCount} entries in Postgres.`);
+    }
+
+    return { replaced: replacedCount, skipped: skippedCount };
+  } catch (error) {
+    console.error('Error applying resolutions to Postgres:', error);
+    throw new Error('Failed to save conflict resolutions to the central database.');
+  }
 };

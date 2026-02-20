@@ -9,17 +9,34 @@
  * 2. PitScoutingDB - Pit scouting/robot capabilities
  */
 
-import Dexie, { type Table } from 'dexie';
 import type {
   ScoutingEntryBase,
   ScoutingDataExport,
   ImportResult,
   DBStats,
-  FilterOptions,
   QueryFilters,
   PitScoutingEntryBase,
   PitScoutingStats,
 } from '../types';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+
+export async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  return response.json();
+}
 
 // ============================================================================
 // DATABASE CLASSES
@@ -28,48 +45,9 @@ import type {
 /**
  * Main scouting database - stores match scouting entries
  */
-export class MatchScoutingDB extends Dexie {
-  scoutingData!: Table<ScoutingEntryBase, string>;
 
-  constructor() {
-    super('MatchScoutingDB');
 
-    this.version(1).stores({
-      scoutingData: 'id, teamNumber, matchNumber, allianceColor, scoutName, eventKey, matchKey, timestamp, isCorrected, [teamNumber+eventKey], [scoutName+eventKey+matchNumber]'
-    });
-  }
-}
 
-/**
- * Pit scouting database - stores robot capabilities and measurements
- */
-export class PitScoutingDB extends Dexie {
-  pitScoutingData!: Table<PitScoutingEntryBase, string>;
-
-  constructor() {
-    super('PitScoutingDB');
-
-    this.version(1).stores({
-      pitScoutingData: 'id, teamNumber, eventKey, scoutName, timestamp, [teamNumber+eventKey]'
-    });
-  }
-}
-
-// ============================================================================
-// DATABASE INSTANCES
-// ============================================================================
-
-export const db = new MatchScoutingDB();
-export const pitDB = new PitScoutingDB();
-
-// Open databases and log any errors
-db.open().catch(error => {
-  console.error('Failed to open MatchScoutingDB:', error);
-});
-
-pitDB.open().catch(error => {
-  console.error('Failed to open PitScoutingDB:', error);
-});
 
 // ============================================================================
 // SCOUTING DATA CRUD OPERATIONS
@@ -81,7 +59,10 @@ pitDB.open().catch(error => {
 export const saveScoutingEntry = async <TGameData = Record<string, unknown>>(
   entry: ScoutingEntryBase<TGameData>
 ): Promise<void> => {
-  await db.scoutingData.put(entry as ScoutingEntryBase<Record<string, unknown>>);
+  await apiRequest('/matches', {
+    method: 'POST',
+    body: JSON.stringify(entry),
+  });
 };
 
 /**
@@ -90,7 +71,10 @@ export const saveScoutingEntry = async <TGameData = Record<string, unknown>>(
 export const saveScoutingEntries = async <TGameData = Record<string, unknown>>(
   entries: ScoutingEntryBase<TGameData>[]
 ): Promise<void> => {
-  await db.scoutingData.bulkPut(entries as ScoutingEntryBase<Record<string, unknown>>[]);
+  await apiRequest('/matches/bulk', {
+    method: 'POST',
+    body: JSON.stringify(entries),
+  });
 };
 
 /**
@@ -99,7 +83,7 @@ export const saveScoutingEntries = async <TGameData = Record<string, unknown>>(
 export const loadAllScoutingEntries = async <TGameData = Record<string, unknown>>(): Promise<
   ScoutingEntryBase<TGameData>[]
 > => {
-  return (await db.scoutingData.toArray()) as ScoutingEntryBase<TGameData>[];
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>('/matches/query', { method: 'GET' });
 };
 
 /**
@@ -108,10 +92,7 @@ export const loadAllScoutingEntries = async <TGameData = Record<string, unknown>
 export const loadScoutingEntriesByTeam = async <TGameData = Record<string, unknown>>(
   teamNumber: number
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return (await db.scoutingData
-    .where('teamNumber')
-    .equals(teamNumber)
-    .toArray()) as ScoutingEntryBase<TGameData>[];
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify({ teamNumbers: [teamNumber] }) });
 };
 
 /**
@@ -120,10 +101,7 @@ export const loadScoutingEntriesByTeam = async <TGameData = Record<string, unkno
 export const loadScoutingEntriesByMatch = async <TGameData = Record<string, unknown>>(
   matchNumber: number
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return (await db.scoutingData
-    .where('matchNumber')
-    .equals(matchNumber)
-    .toArray()) as ScoutingEntryBase<TGameData>[];
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify({ matchNumbers: [matchNumber] }) });
 };
 
 /**
@@ -132,11 +110,9 @@ export const loadScoutingEntriesByMatch = async <TGameData = Record<string, unkn
 export const loadScoutingEntriesByEvent = async <TGameData = Record<string, unknown>>(
   eventKey: string
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return (await db.scoutingData
-    .where('eventKey')
-    .equals(eventKey.toLowerCase())
-    .toArray()) as ScoutingEntryBase<TGameData>[];
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/events/${eventKey}/matches`, { method: 'GET' });
 };
+
 
 /**
  * Load scouting entries for a team at a specific event
@@ -145,10 +121,8 @@ export const loadScoutingEntriesByTeamAndEvent = async <TGameData = Record<strin
   teamNumber: number,
   eventKey: string
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return (await db.scoutingData
-    .where('[teamNumber+eventKey]')
-    .equals([teamNumber, eventKey.toLowerCase()])
-    .toArray()) as ScoutingEntryBase<TGameData>[];
+  const filters: QueryFilters = { teamNumbers: [teamNumber], eventKeys: [eventKey] };
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify(filters) });
 };
 
 /**
@@ -160,11 +134,9 @@ export const findExistingScoutingEntry = async <TGameData = Record<string, unkno
   allianceColor: 'red' | 'blue',
   eventKey: string
 ): Promise<ScoutingEntryBase<TGameData> | undefined> => {
-  const entries = (await db.scoutingData
-    .where({ matchNumber, teamNumber, allianceColor, eventKey: eventKey.toLowerCase() })
-    .toArray()) as ScoutingEntryBase<TGameData>[];
-
-  return entries[0];
+  const filters: QueryFilters = { matchNumbers: [matchNumber], teamNumbers: [teamNumber], alliances: [allianceColor], eventKeys: [eventKey] };
+  const entries = await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify(filters) });
+  return entries.length > 0 ? entries[0] : undefined;
 };
 
 /**
@@ -176,36 +148,42 @@ export const updateScoutingEntryWithCorrection = async <TGameData = Record<strin
   correctionNotes: string,
   correctedBy: string
 ): Promise<void> => {
-  const existing = await db.scoutingData.get(id);
-  if (!existing) {
-    throw new Error('Entry not found');
+  const entries = await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify({ ids: [id] }) });
+  const existingEntry = entries[0];
+  
+  if (!existingEntry) {
+    throw new Error('Entry not found for correction');
   }
 
-  const updatedEntry: Partial<ScoutingEntryBase<Record<string, unknown>>> = {
-    ...newData as ScoutingEntryBase<Record<string, unknown>>,
+  const updatedEntry = {
+    ...newData,
     timestamp: Date.now(),
     isCorrected: true,
-    correctionCount: (existing.correctionCount || 0) + 1,
+    correctionCount: (existingEntry.correctionCount || 0) + 1,
     lastCorrectedAt: Date.now(),
     lastCorrectedBy: correctedBy,
-    correctionNotes: correctionNotes,
-  };
+    correctionNotes,
+  }
 
-  await db.scoutingData.put(updatedEntry as ScoutingEntryBase<Record<string, unknown>>);
+  return saveScoutingEntry(updatedEntry);
 };
 
 /**
  * Delete a single scouting entry
  */
 export const deleteScoutingEntry = async (id: string): Promise<void> => {
-  await db.scoutingData.delete(id);
+  await apiRequest(`/matches/${id}`, { method: 'DELETE' });
 };
+
+export const deleteScoutingEntriesByEvent = async (eventKey: string): Promise<void> => {
+  await apiRequest(`/events/${eventKey}/matches`, { method: 'DELETE' });
+}
 
 /**
  * Clear all scouting data
  */
 export const clearAllScoutingData = async (): Promise<void> => {
-  await db.scoutingData.clear();
+  await apiRequest('/matches/all', { method: 'DELETE' });
 };
 
 // ============================================================================
@@ -216,52 +194,7 @@ export const clearAllScoutingData = async (): Promise<void> => {
  * Get database statistics
  */
 export const getDBStats = async (): Promise<DBStats> => {
-  const entries = await db.scoutingData.toArray();
-
-  const teams = new Set<string>();
-  const matches = new Set<string>();
-  const scouts = new Set<string>();
-  const events = new Set<string>();
-  let oldestEntry: number | undefined;
-  let newestEntry: number | undefined;
-
-  entries.forEach(entry => {
-    if (entry.teamNumber) teams.add(String(entry.teamNumber));
-    if (entry.matchNumber) matches.add(String(entry.matchNumber));
-    if (entry.scoutName) scouts.add(entry.scoutName);
-    if (entry.eventKey) events.add(entry.eventKey);
-
-    if (!oldestEntry || entry.timestamp < oldestEntry) oldestEntry = entry.timestamp;
-    if (!newestEntry || entry.timestamp > newestEntry) newestEntry = entry.timestamp;
-  });
-
-  return {
-    totalEntries: entries.length,
-    teams: Array.from(teams).sort((a, b) => Number(a) - Number(b)),
-    matches: Array.from(matches).sort((a, b) => Number(a) - Number(b)),
-    scouts: Array.from(scouts).sort(),
-    events: Array.from(events).sort(),
-    oldestEntry,
-    newestEntry,
-  };
-};
-
-/**
- * Get filter options for UI dropdowns
- */
-export const getFilterOptions = async (): Promise<FilterOptions> => {
-  const stats = await getDBStats();
-  const entries = await db.scoutingData.toArray();
-
-  const alliances = [...new Set(entries.map(e => e.allianceColor).filter(Boolean))].sort() as string[];
-
-  return {
-    teams: stats.teams,
-    matches: stats.matches,
-    events: stats.events,
-    alliances,
-    scouts: stats.scouts,
-  };
+  return await apiRequest<DBStats>('/stats', { method: 'GET' });
 };
 
 /**
@@ -270,25 +203,7 @@ export const getFilterOptions = async (): Promise<FilterOptions> => {
 export const queryScoutingEntries = async <TGameData = Record<string, unknown>>(
   filters: QueryFilters
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  let collection = db.scoutingData.toCollection();
-
-  if (filters.dateRange) {
-    collection = collection.filter(
-      entry =>
-        entry.timestamp >= filters.dateRange!.start && entry.timestamp <= filters.dateRange!.end
-    );
-  }
-
-  const results = await collection.toArray();
-
-  return results.filter(entry => {
-    if (filters.teamNumbers && entry.teamNumber && !filters.teamNumbers.includes(entry.teamNumber)) return false;
-    if (filters.matchNumbers && entry.matchNumber && !filters.matchNumbers.includes(entry.matchNumber)) return false;
-    if (filters.eventKeys && entry.eventKey && !filters.eventKeys.includes(entry.eventKey)) return false;
-    if (filters.alliances && entry.allianceColor && !filters.alliances.includes(entry.allianceColor)) return false;
-    if (filters.scoutNames && entry.scoutName && !filters.scoutNames.includes(entry.scoutName)) return false;
-    return true;
-  }) as ScoutingEntryBase<TGameData>[];
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify(filters) });
 };
 
 // ============================================================================
@@ -311,21 +226,17 @@ export const importScoutingData = async <TGameData = Record<string, unknown>>(
   mode: 'append' | 'overwrite' = 'append'
 ): Promise<ImportResult> => {
   try {
-    if (mode === 'overwrite') {
-      await clearAllScoutingData();
-      await db.scoutingData.bulkPut(importData.entries as ScoutingEntryBase<Record<string, unknown>>[]);
-      return { success: true, importedCount: importData.entries.length };
-    } else {
-      const existingIds = await db.scoutingData.orderBy('id').keys();
-      const existingIdSet = new Set(existingIds);
-      const newEntries = importData.entries.filter(entry => !existingIdSet.has(entry.id));
-      await db.scoutingData.bulkPut(newEntries as ScoutingEntryBase<Record<string, unknown>>[]);
-      return {
-        success: true,
-        importedCount: newEntries.length,
-        duplicatesSkipped: importData.entries.length - newEntries.length,
-      };
-    }
+    // We send the mode and data to the API in one go.
+    // The server handles the transaction (clearing if overwrite, or UPSERT if append).
+    const result = await apiRequest<ImportResult>('/matches/import', {
+      method: 'POST',
+      body: JSON.stringify({
+        entries: importData.entries,
+        mode,
+      }),
+    });
+
+    return result;
   } catch (error) {
     console.error('Import failed:', error);
     return {
@@ -335,7 +246,6 @@ export const importScoutingData = async <TGameData = Record<string, unknown>>(
     };
   }
 };
-
 // ============================================================================
 // PIT SCOUTING OPERATIONS
 // ============================================================================
@@ -343,62 +253,62 @@ export const importScoutingData = async <TGameData = Record<string, unknown>>(
 export const savePitScoutingEntry = async (
   entry: PitScoutingEntryBase
 ): Promise<void> => {
-  await pitDB.pitScoutingData.put(entry);
+  await apiRequest('/pit', {
+    method: 'POST',
+    body: JSON.stringify(entry),
+  });
 };
+
+export const savePitScoutingEntries = async (
+  entries: PitScoutingEntryBase[]
+): Promise<void> => {
+  await apiRequest('/pit/bulk', {
+    method: 'POST',
+    body: JSON.stringify(entries),
+  });
+}
 
 export const loadAllPitScoutingEntries = async (): Promise<
   PitScoutingEntryBase[]
 > => {
-  return (await pitDB.pitScoutingData.toArray());
+  return await apiRequest<PitScoutingEntryBase[]>('/pit', { method: 'GET' });
 };
 
 export const loadPitScoutingByTeam = async (
   teamNumber: number
 ): Promise<PitScoutingEntryBase[]> => {
-  return (await pitDB.pitScoutingData
-    .where('teamNumber')
-    .equals(teamNumber)
-    .toArray());
+  return await apiRequest<PitScoutingEntryBase[]>(`/pit/team/${teamNumber}`, { method: 'GET' });
 };
 
 export const loadPitScoutingByTeamAndEvent = async (
   teamNumber: number,
   eventKey: string
 ): Promise<PitScoutingEntryBase | undefined> => {
-  const results = (await pitDB.pitScoutingData
-    .where('[teamNumber+eventKey]')
-    .equals([teamNumber, eventKey])
-    .toArray());
-  return results.sort((a, b) => b.timestamp - a.timestamp)[0];
+  const results = await apiRequest<PitScoutingEntryBase[]>(
+    `/pit/query?teamNumber=${teamNumber}&eventKey=${eventKey.toLowerCase()}`,
+    { method: 'GET' }
+  );
+  return results[0];
 };
 
 export const loadPitScoutingByEvent = async (
   eventKey: string
 ): Promise<PitScoutingEntryBase[]> => {
-  return (await pitDB.pitScoutingData
-    .where('eventKey')
-    .equals(eventKey)
-    .toArray());
+  return await apiRequest<PitScoutingEntryBase[]>(`/pit/event/${eventKey.toLowerCase()}`, { method: 'GET' });
 };
 
 export const deletePitScoutingEntry = async (id: string): Promise<void> => {
-  await pitDB.pitScoutingData.delete(id);
+  await apiRequest(`/pit/${id}`, { method: 'DELETE' });
 };
 
 export const clearAllPitScoutingData = async (): Promise<void> => {
-  await pitDB.pitScoutingData.clear();
+  await apiRequest('/pit/all', { method: 'DELETE' });
 };
 
-export const getPitScoutingStats = async (): Promise<PitScoutingStats> => {
-  const entries = await pitDB.pitScoutingData.toArray();
-  const teams = [...new Set(entries.map(e => e.teamNumber))].sort((a, b) => a - b);
-  const events = [...new Set(entries.map(e => e.eventKey))].sort();
-  const scouts = [...new Set(entries.map(e => e.scoutName))].sort();
+export const deletePitScoutingEntriesByEvent = async (eventKey: string): Promise<void> => {
+  await apiRequest(`/pit/event/${eventKey.toLowerCase()}`, { method: 'DELETE' });
+}
 
-  return {
-    totalEntries: entries.length,
-    teams,
-    events,
-    scouts,
-  };
+export const getPitScoutingStats = async (): Promise<PitScoutingStats> => {
+  return await apiRequest<PitScoutingStats>('/pit/stats', { method: 'GET' });
 };

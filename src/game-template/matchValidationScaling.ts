@@ -20,7 +20,7 @@
 
 import { ScoutingEntryBase } from '@/core/types/scouting-entry';
 import { ScalingFactors, ScaledTeamMetrics, AllianceScalingResult } from './types/scalingTypes';
-import { db } from '@/db';
+import { apiRequest } from '@/core/db/database';
 
 const normalizeMatchKey = (matchKey: string): string => {
     if (!matchKey.includes('_')) return matchKey;
@@ -231,60 +231,27 @@ export async function updateEntriesWithScaling(
     matchKey: string,
     scalingResults: { red: AllianceScalingResult; blue: AllianceScalingResult }
 ): Promise<{ updated: number; errors: number }> {
-    let updated = 0;
-    let errors = 0;
+    try {
+        // Flatten the red and blue alliance results into a single array for the API
+        const allTeams = [
+            ...scalingResults.red.teams.map(t => ({ ...t, alliance: 'red' })),
+            ...scalingResults.blue.teams.map(t => ({ ...t, alliance: 'blue' }))
+        ];
 
-    const allTeams = [...scalingResults.red.teams, ...scalingResults.blue.teams];
-
-    const normalizedMatchKey = normalizeMatchKey(matchKey);
-
-    for (const team of allTeams) {
-        try {
-            // Find the entry by composite key pattern
-            const entries = await db.scoutingData
-                .where('[teamNumber+eventKey]')
-                .equals([parseInt(team.teamNumber), eventKey])
-                .toArray();
-
-            // Find the specific match entry
-            const entry = entries.find(e => normalizeMatchKey(e.matchKey ?? '') === normalizedMatchKey);
-
-            if (entry) {
-                // Update gameData with scaled metrics (2026-specific structure)
-                const updatedGameData = {
-                    ...entry.gameData,
-                    scaledMetrics: {
-                        scalingApplied: true,
-                        scaledAutoFuel: team.scaledAutoFuel,
-                        scaledTeleopFuel: team.scaledTeleopFuel,
-                        scalingFactorAuto: team.scalingFactors.autoFuel,
-                        scalingFactorTeleop: team.scalingFactors.teleopFuel,
-                        officialTowerLevel: team.officialTowerLevel,
-                        lastScaledAt: Date.now(),
-                    },
-                };
-
-                await db.scoutingData.update(entry.id, {
-                    gameData: updatedGameData,
-                } as Partial<ScoutingEntryBase>);
-
-                updated++;
-                console.log(`[2026 Scaling] Updated entry for team ${team.teamNumber}:`, {
-                    scaledAuto: team.scaledAutoFuel,
-                    scaledTeleop: team.scaledTeleopFuel,
-                    officialTower: team.officialTowerLevel,
-                });
-            } else {
-                console.warn(`[2026 Scaling] Entry not found for team ${team.teamNumber} in match ${matchKey}`);
-                errors++;
+        // Send a single request to a dedicated scaling endpoint
+        const result = await apiRequest<{ updated: number; errors: number }>(
+            `/events/${eventKey}/matches/${matchKey}/scale`,
+            {
+                method: 'PATCH',
+                body: JSON.stringify({ teams: allTeams }),
             }
-        } catch (error) {
-            console.error(`[2026 Scaling] Error updating team ${team.teamNumber}:`, error);
-            errors++;
-        }
-    }
+        );
 
-    return { updated, errors };
+        return result;
+    } catch (error) {
+        console.error(`[2026 Scaling] API Error:`, error);
+        return { updated: 0, errors: 1 }; 
+    }
 }
 
 /**
@@ -292,48 +259,47 @@ export async function updateEntriesWithScaling(
  * Checks gameData.scaledMetrics field (2026-specific)
  */
 export async function isMatchScaled(eventKey: string, matchKey: string): Promise<boolean> {
-    const normalizedMatchKey = normalizeMatchKey(matchKey);
+    try {
+        const params = new URLSearchParams({
+            eventKey: eventKey.toLowerCase(),
+            matchKey: normalizeMatchKey(matchKey)
+        });
 
-    const entries = await db.scoutingData
-        .where('eventKey')
-        .equals(eventKey)
-        .filter(e => normalizeMatchKey(e.matchKey ?? '') === normalizedMatchKey)
-        .toArray();
+        // We call a dedicated check endpoint
+        const { isScaled } = await apiRequest<{ isScaled: boolean }>(
+            `/matches/is-scaled?${params.toString()}`,
+            { method: 'GET' }
+        );
 
-    // Match is scaled if any entry has gameData.scaledMetrics.scalingApplied = true
-    return entries.some(e => {
-        const gameData = e.gameData as any;
-        return gameData?.scaledMetrics?.scalingApplied === true;
-    });
+        return isScaled;
+    } catch (error) {
+        console.error(`[2026 Scaling] Error checking scaling status:`, error);
+        return false;
+    }
 }
-
 /**
- * Clear scaling data from match entries (for re-validation)
- * Removes gameData.scaledMetrics field (2026-specific)
+ * Clears scaling data for all teams in a specific match.
+ * Performs a server-side bulk update to remove the scaledMetrics key.
  */
 export async function clearMatchScaling(eventKey: string, matchKey: string): Promise<number> {
-    const normalizedMatchKey = normalizeMatchKey(matchKey);
+    try {
+        const payload = {
+            eventKey: eventKey.toLowerCase(),
+            matchKey: normalizeMatchKey(matchKey)
+        };
 
-    const entries = await db.scoutingData
-        .where('eventKey')
-        .equals(eventKey)
-        .filter(e => normalizeMatchKey(e.matchKey ?? '') === normalizedMatchKey)
-        .toArray();
+        const { clearedCount } = await apiRequest<{ clearedCount: number }>(
+            '/matches/clear-scaling',
+            {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            }
+        );
 
-    let cleared = 0;
-
-    for (const entry of entries) {
-        const gameData = entry.gameData as any;
-        if (gameData?.scaledMetrics?.scalingApplied) {
-            // Remove scaledMetrics from gameData
-            const { scaledMetrics, ...restGameData } = gameData;
-            
-            await db.scoutingData.update(entry.id, {
-                gameData: restGameData,
-            } as Partial<ScoutingEntryBase>);
-            cleared++;
-        }
+        console.log(`[2026 Scaling] Successfully cleared scaling for ${clearedCount} entries.`);
+        return clearedCount;
+    } catch (error) {
+        console.error(`[2026 Scaling] Error clearing scaling:`, error);
+        return 0;
     }
-
-    return cleared;
 }

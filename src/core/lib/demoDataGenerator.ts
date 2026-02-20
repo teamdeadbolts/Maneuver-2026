@@ -11,7 +11,7 @@
  * This is game-agnostic and uses the game context to generate game-specific data.
  */
 
-import { db, saveScoutingEntry, savePitScoutingEntry } from '@/core/db/database';
+import { saveScoutingEntry, savePitScoutingEntry, deleteScoutingEntriesByEvent } from '@/core/db/database';
 import type { ScoutingEntryBase } from '@/core/types/scouting-entry';
 import type { PitScoutingEntryBase, DrivetrainType, ProgrammingLanguage } from '@/core/types/pit-scouting';
 import { setCurrentEvent } from '@/core/lib/tba/eventDataUtils';
@@ -854,7 +854,8 @@ export async function generateDemoEventScheduleOnly(options: Pick<DemoDataOption
 
     try {
         if (clearExisting) {
-            await db.scoutingData.where('eventKey').equals(eventKey).delete();
+            // await db.scoutingData.where('eventKey').equals(eventKey).delete();
+            await deleteScoutingEntriesByEvent(eventKey);
             await clearEventCache(eventKey);
             await clearEventValidationResults(eventKey);
             await gamificationDB.predictions.where('eventKey').equals(eventKey).delete();
@@ -915,10 +916,11 @@ export async function generateDemoEvent(options: DemoDataOptions = {}): Promise<
     try {
         // Clear existing demo data if requested
         if (clearExisting) {
-            await db.scoutingData
-                .where('eventKey')
-                .equals(eventKey)
-                .delete();
+            // await db.scoutingData
+            //     .where('eventKey')
+            //     .equals(eventKey)
+            //     .delete();
+            await deleteScoutingEntriesByEvent(eventKey);
             await clearEventValidationResults(eventKey);
             console.log('  ✓ Cleared existing demo data');
         }

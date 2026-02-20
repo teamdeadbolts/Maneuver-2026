@@ -1,4 +1,4 @@
-import { db, pitDB, saveScoutingEntry } from '@/db';
+import { clearAllPitScoutingData, clearAllScoutingData, saveScoutingEntry } from '@/db';
 import {
     gamificationDB,
 } from '@/game-template/gamification';
@@ -298,8 +298,10 @@ export const generateTBAAlignedScoutingData = async (matchCount: number = 10): P
 export const resetEntireDatabase = async () => {
     console.log('🧹 Resetting all databases...');
     await Promise.all([
-        db.scoutingData.clear(),
-        pitDB.pitScoutingData.clear(),
+        // db.scoutingData.clear(),
+        clearAllScoutingData(),
+        // pitDB.pitScoutingData.clear(),
+        clearAllPitScoutingData(),
         gamificationDB.scouts.clear(),
         gamificationDB.predictions.clear(),
         gamificationDB.scoutAchievements.clear()

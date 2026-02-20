@@ -5,10 +5,6 @@
 
 // Database instances and classes
 export {
-  db,
-  pitDB,
-  MatchScoutingDB,
-  PitScoutingDB,
 } from '../core/db/database';
 
 // Scouting data operations

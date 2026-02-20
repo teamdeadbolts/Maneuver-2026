@@ -5,7 +5,7 @@
  * It handles data transformation, database saving, and cleanup.
  */
 
-import { db } from '@/core/db/database';
+import { apiRequest } from '@/core/db/database';
 import { clearScoutingLocalStorage } from '@/core/lib/utils';
 import { toast } from 'sonner';
 import type { DataTransformation } from '@/types';
@@ -80,6 +80,10 @@ function buildMatchKey(matchType: string, matchNumber: string): { matchKey: stri
  * 
  * @param options.noShow - If true, submits a minimal entry with noShow flag and skips data collection
  */
+/**
+ * Submits match data to the Postgres API.
+ * Replaces the local Dexie 'put' with a network POST request.
+ */
 export async function submitMatchData({
     inputs,
     transformation,
@@ -89,61 +93,13 @@ export async function submitMatchData({
     onError,
 }: SubmitOptions): Promise<boolean> {
     try {
-        // Build match key
         const { matchKey, numericMatch } = buildMatchKey(
             inputs.matchType || 'qm',
             inputs.matchNumber
         );
 
-        // For no-show, skip data collection and submit minimal entry
-        if (noShow) {
-            const entry: Record<string, unknown> = {
-                id: `${inputs.eventKey}::${matchKey}::${inputs.selectTeam}::${inputs.alliance}`,
-                scoutName: inputs.scoutName || '',
-                teamNumber: parseInt(inputs.selectTeam) || 0,
-                matchNumber: numericMatch,
-                eventKey: inputs.eventKey,
-                matchKey: matchKey,
-                allianceColor: inputs.alliance,
-                timestamp: Date.now(),
-                noShow: true,
-                comments: comment || 'No Show - Robot did not appear for this match',
-                gameData: {
-                    auto: { startPosition: inputs.startPosition },
-                    teleop: {},
-                    endgame: {},
-                },
-            };
-
-            await db.scoutingData.put(entry as never);
-            toast.success('No-show match submitted');
-            clearScoutingLocalStorage();
-            
-            if (onSuccess) {
-                onSuccess();
-            }
-            return true;
-        }
-
-        // Get all phase data from localStorage
-        const autoActions = getActionsFromLocalStorage('auto');
-        const teleopActions = getActionsFromLocalStorage('teleop');
-        const autoRobotStatus = getRobotStatusFromLocalStorage('auto');
-        const teleopRobotStatus = getRobotStatusFromLocalStorage('teleop');
-        const endgameRobotStatus = getRobotStatusFromLocalStorage('endgame');
-
-        // Transform action arrays to counter fields using game-specific transformation
-        const transformedGameData = transformation.transformActionsToCounters({
-            autoActions,
-            teleopActions,
-            autoRobotStatus,
-            teleopRobotStatus,
-            endgameRobotStatus,
-            startPosition: inputs.startPosition,
-        });
-
-        // Create the scouting entry
-        const scoutingEntry: Record<string, unknown> = {
+        // Common fields for both regular and no-show entries
+        const baseEntry = {
             id: `${inputs.eventKey}::${matchKey}::${inputs.selectTeam}::${inputs.alliance}`,
             scoutName: inputs.scoutName || '',
             teamNumber: parseInt(inputs.selectTeam) || 0,
@@ -152,27 +108,65 @@ export async function submitMatchData({
             matchKey: matchKey,
             allianceColor: inputs.alliance,
             timestamp: Date.now(),
-            gameData: transformedGameData,
             comments: comment,
         };
 
-        // Save to database
-        await db.scoutingData.put(scoutingEntry as never);
+        let finalEntry: Record<string, unknown>;
 
-        // Clear action stacks and robot status
+        if (noShow) {
+            finalEntry = {
+                ...baseEntry,
+                noShow: true,
+                comments: comment || 'No Show - Robot did not appear for this match',
+                gameData: {
+                    auto: { startPosition: inputs.startPosition },
+                    teleop: {},
+                    endgame: {},
+                },
+            };
+        } else {
+            // Collect and transform local session data
+            const autoActions = getActionsFromLocalStorage('auto');
+            const teleopActions = getActionsFromLocalStorage('teleop');
+            const autoRobotStatus = getRobotStatusFromLocalStorage('auto');
+            const teleopRobotStatus = getRobotStatusFromLocalStorage('teleop');
+            const endgameRobotStatus = getRobotStatusFromLocalStorage('endgame');
+
+            const transformedGameData = transformation.transformActionsToCounters({
+                autoActions,
+                teleopActions,
+                autoRobotStatus,
+                teleopRobotStatus,
+                endgameRobotStatus,
+                startPosition: inputs.startPosition,
+            });
+
+            finalEntry = {
+                ...baseEntry,
+                gameData: transformedGameData,
+            };
+        }
+
+        // POST the completed entry to the Postgres API
+        await apiRequest('/matches', {
+            method: 'POST',
+            body: JSON.stringify(finalEntry),
+        });
+
+        // Cleanup local session state
         clearScoutingLocalStorage();
 
-        // Update match counter
+        // Increment local match counter for the scout's workflow
         const currentMatchNumber = localStorage.getItem('currentMatchNumber') || '1';
         const nextMatchNumber = (parseInt(currentMatchNumber) + 1).toString();
         localStorage.setItem('currentMatchNumber', nextMatchNumber);
 
-        toast.success('Match data saved successfully!');
+        toast.success(noShow ? 'No-show match submitted' : 'Match data saved successfully!');
         onSuccess?.();
         return true;
     } catch (error) {
-        console.error('Error saving match data:', error);
-        toast.error('Error saving match data');
+        console.error('Error submitting match data:', error);
+        toast.error('Error submitting match data to server');
         onError?.(error as Error);
         return false;
     }

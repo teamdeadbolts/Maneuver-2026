@@ -14,9 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { UniversalFountainGenerator } from "@/core/components/data-transfer/UniversalFountainGenerator";
 import { UniversalFountainScanner } from "@/core/components/data-transfer/UniversalFountainScanner";
 import { DataFilteringControls } from "@/core/components/data-transfer/DataFilteringControls";
-import { exportScoutingData } from "@/core/db/database";
+import { exportScoutingData, savePitScoutingEntries, savePitScoutingEntry } from "@/core/db/database";
 import { loadPitScoutingData } from "@/core/lib/pitScoutingUtils";
-import { pitDB } from "@/core/db/database";
 import { gamificationDB } from "@/game-template/gamification/database";
 import { handleScoutingDataUpload } from "@/core/lib/uploadHandlers/scoutingDataUploadHandler";
 import { applyFilters, createDefaultFilters, type DataFilters, type ScoutingDataCollection } from "@/core/lib/dataFiltering";
@@ -215,7 +214,8 @@ const QRDataTransferPage = () => {
             saveData: async (data: unknown) => {
                 const pitData = data as { entries?: unknown[] };
                 if (pitData.entries && Array.isArray(pitData.entries)) {
-                    await pitDB.pitScoutingData.bulkPut(pitData.entries as never[]);
+                    // await pitDB.pitScoutingData.bulkPut(pitData.entries as never[]);
+                    await savePitScoutingEntries(pitData.entries as never[]);
                     toast.success(`Successfully imported ${pitData.entries.length} pit scouting entries`);
                 }
             },

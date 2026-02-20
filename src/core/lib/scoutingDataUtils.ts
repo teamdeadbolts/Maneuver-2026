@@ -4,7 +4,7 @@
  */
 
 import type { ScoutingEntryBase } from '@/types/scouting-entry';
-import { db } from '@/core/db/database';
+import { apiRequest } from '@/core/db/database';
 
 /**
  * Normalize event key for consistent storage and comparison
@@ -104,23 +104,35 @@ const compareMatchKeys = (a: string, b: string): number => {
   return parsedA.raw.localeCompare(parsedB.raw);
 };
 
+/**
+ * Loads all scouting entries from the Postgres API.
+ * In a production app, you might consider adding pagination or event filters
+ * here to avoid downloading the entire history of the team.
+ */
 export const loadScoutingData = async (): Promise<ScoutingEntryBase[]> => {
   try {
-    const entries = await db.scoutingData.toArray();
-    // Cast to ScoutingEntryBase since database returns generic version
-    return entries as unknown as ScoutingEntryBase[];
+    const entries = await apiRequest<ScoutingEntryBase[]>('/matches', {
+      method: 'GET'
+    });
+    return entries;
   } catch (error) {
-    console.error('Error loading scouting data:', error);
+    console.error('Error loading scouting data from API:', error);
     return [];
   }
 };
 
+/**
+ * Saves multiple scouting entries to the Postgres database.
+ * Uses the bulk-upsert logic on the server to handle updates to existing records.
+ */
 export const saveScoutingData = async (entries: ScoutingEntryBase[]): Promise<void> => {
   try {
-    // Cast to match database generic type
-    await db.scoutingData.bulkPut(entries as any);
+    await apiRequest('/matches/bulk', {
+      method: 'POST',
+      body: JSON.stringify(entries),
+    });
   } catch (error) {
-    console.error('Error saving scouting data:', error);
+    console.error('Error saving scouting data via API:', error);
     throw error;
   }
 };
@@ -241,113 +253,31 @@ export const computeChangedFields = (
  * Detects conflicts between incoming data and existing local data
  * Returns categorized results for UI handling
  */
+/**
+ * Detect conflicts by comparing incoming data against the Postgres database.
+ * This sends the incoming batch to the server, which performs optimized
+ * lookups to identify new, updated, or conflicting records.
+ */
 export const detectConflicts = async (
   incomingData: ScoutingEntryBase[]
 ): Promise<ConflictDetectionResult> => {
-  const autoImport: ScoutingEntryBase[] = [];
-  const autoReplace: ScoutingEntryBase[] = [];
-  const batchReview: ScoutingEntryBase[] = [];
-  const conflicts: ConflictInfo[] = [];
-  
-  const allLocalEntries = await db.scoutingData.toArray();
-  const localEntriesById = new Map(
-    allLocalEntries.map(entry => [entry.id, entry as unknown as ScoutingEntryBase])
-  );
-  
-  const localEntriesByFields = new Map(
-    allLocalEntries.map(entry => {
-      const typedEntry = entry as unknown as ScoutingEntryBase;
-      const key = generateDeterministicEntryId(
-        typedEntry.eventKey,
-        typedEntry.matchKey,
-        typedEntry.teamNumber,
-        typedEntry.allianceColor
-      );
-      return [key, typedEntry];
-    })
-  );
-  
-  for (const incomingEntry of incomingData) {
-    let matchingLocal = localEntriesById.get(incomingEntry.id);
-    
-    if (!matchingLocal) {
-      const fieldBasedKey = generateDeterministicEntryId(
-        incomingEntry.eventKey,
-        incomingEntry.matchKey,
-        incomingEntry.teamNumber,
-        incomingEntry.allianceColor
-      );
-      matchingLocal = localEntriesByFields.get(fieldBasedKey);
-    }
-    
-    if (!matchingLocal) {
-      autoImport.push(incomingEntry);
-      continue;
-    }
-    
-    const localIsCorrected = matchingLocal.isCorrected || false;
-    const incomingIsCorrected = Boolean(incomingEntry.isCorrected);
-    
-    const localFingerprint = generateDataFingerprint(matchingLocal);
-    const incomingFingerprint = generateDataFingerprint(incomingEntry);
-    
-    if (localIsCorrected && incomingIsCorrected) {
-      const localCorrectionTime = Number(matchingLocal.lastCorrectedAt || matchingLocal.timestamp || 0);
-      const incomingCorrectionTime = Number(incomingEntry.lastCorrectedAt || incomingEntry.timestamp || 0);
-      
-      if (localFingerprint === incomingFingerprint && Math.abs(localCorrectionTime - incomingCorrectionTime) <= 1000) {
-        continue;
-      }
-    } else if (localFingerprint === incomingFingerprint && localIsCorrected === incomingIsCorrected) {
-      continue;
-    }
-    
-    if (!localIsCorrected && !incomingIsCorrected) {
-      batchReview.push(incomingEntry);
-      continue;
-    }
-    
-    if (!localIsCorrected && incomingIsCorrected) {
-      autoReplace.push(incomingEntry);
-      continue;
-    }
-    
-    if (localIsCorrected && !incomingIsCorrected) {
-      const changedFields = computeChangedFields(matchingLocal, incomingEntry);
-      conflicts.push({
-        incoming: incomingEntry,
-        local: matchingLocal,
-        conflictType: 'corrected-vs-uncorrected',
-        isNewerIncoming: false,
-        changedFields
-      });
-      continue;
-    }
-    
-    if (localIsCorrected && incomingIsCorrected) {
-      const localCorrectionTime = matchingLocal.lastCorrectedAt || matchingLocal.timestamp;
-      const incomingCorrectionTime = Number(incomingEntry.lastCorrectedAt || incomingEntry.timestamp || 0);
-      
-      if (Math.abs(localCorrectionTime - incomingCorrectionTime) <= 1000) {
-        autoReplace.push(incomingEntry);
-        continue;
-      }
-      
-      const changedFields = computeChangedFields(matchingLocal, incomingEntry);
-      conflicts.push({
-        incoming: incomingEntry,
-        local: matchingLocal,
-        conflictType: 'corrected-vs-corrected',
-        isNewerIncoming: incomingCorrectionTime > localCorrectionTime,
-        changedFields
-      });
-    }
+  try {
+    // We send the incoming data to a dedicated conflict detection endpoint.
+    // The server is much faster at cross-referencing IDs and field-based keys.
+    const result = await apiRequest<ConflictDetectionResult>('/matches/detect-conflicts', {
+      method: 'POST',
+      body: JSON.stringify({ entries: incomingData }),
+    });
+
+    return result;
+  } catch (error) {
+    console.error('Error detecting conflicts via API:', error);
+    // Return empty results on error to prevent data loss or UI crashes
+    return {
+      autoImport: [],
+      autoReplace: [],
+      batchReview: [],
+      conflicts: []
+    };
   }
-  
-  return {
-    autoImport,
-    autoReplace,
-    batchReview,
-    conflicts
-  };
 };

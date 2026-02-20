@@ -4,7 +4,7 @@
  * Provides query functions to retrieve scouting data from IndexedDB.
  */
 
-import { db } from '@/db';
+import { apiRequest } from '@/core/db/database';
 import type { ScoutingEntryBase } from '@/core/types/scouting-entry';
 
 /**
@@ -20,14 +20,17 @@ export async function getEntriesByEvent(
     gameData: Record<string, unknown>;
 }>> {
     try {
-        // Query all scouting entries and filter by eventKey
-        const allEntries = await db.scoutingData.toArray();
+        // Query only entries for this specific eventKey
+        const entries = await apiRequest<Array<ScoutingEntryBase<Record<string, unknown>>>>(
+            `/events/${eventKey.toLowerCase()}/matches`, 
+            { method: 'GET' }
+        );
 
-        const filtered = allEntries.filter(entry => entry.eventKey === eventKey);
+        console.log(`[API] Found ${entries.length} entries for event ${eventKey}`);
 
-        console.log(`[ScoutingDB] Found ${filtered.length} entries for event ${eventKey}`);
-
-        return filtered.map(entry => ({
+        // The API should ideally return the transformed data, 
+        // but we can maintain the mapping logic here for backward compatibility.
+        return entries.map(entry => ({
             ...entry,
             matchKey: entry.matchKey || `${eventKey}_qm${entry.matchNumber}`,
             matchNumber: entry.matchNumber,
@@ -36,7 +39,7 @@ export async function getEntriesByEvent(
             gameData: (entry.gameData || {}) as Record<string, unknown>,
         }));
     } catch (error) {
-        console.error('[ScoutingDB] Error loading entries:', error);
+        console.error('[API] Error loading entries by event:', error);
         return [];
     }
 }

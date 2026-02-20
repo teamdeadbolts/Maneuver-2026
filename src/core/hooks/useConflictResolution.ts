@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import type { ConflictInfo } from "@/core/lib/scoutingDataUtils";
 import type { ScoutingEntryBase } from "@/types/scouting-entry";
 import { computeChangedFields } from "@/core/lib/scoutingDataUtils";
-import { db } from "@/core/db/database";
+import { apiRequest } from "@/core/db/database";
 
 // Debug logging helper - only logs in development
 const DEBUG = import.meta.env.DEV;
@@ -47,104 +47,90 @@ export const useConflictResolution = () => {
     }
   };
 
-  // Apply all conflict resolutions
-  const applyConflictResolutions = async (resolutionsMap?: Map<string, 'replace' | 'skip'>) => {
+  /**
+ * Applies conflict resolutions by sending decisions to the server.
+ * The server handles the replacement/skipping atomically.
+ */
+const applyConflictResolutions = async (resolutionsMap?: Map<string, 'replace' | 'skip'>) => {
     const resolutions = resolutionsMap || conflictResolutions;
-    let replaced = 0;
-    let kept = 0;
+    
+    // Filter out only the entries we want to replace
+    const entriesToReplace = currentConflicts
+        .filter(conflict => resolutions.get(getConflictKey(conflict)) === 'replace')
+        .map(conflict => conflict.incoming);
 
-    for (const conflict of currentConflicts) {
-      const conflictKey = getConflictKey(conflict);
-      const decision = resolutions.get(conflictKey);
+    const replacedCount = entriesToReplace.length;
+    const keptCount = currentConflicts.length - replacedCount;
 
-      if (decision === 'replace') {
-        // Delete old entry and save new one directly (don't use saveScoutingEntry - it wraps in legacy format)
-        console.log('🔄 Replacing entry:', {
-          conflictKey,
-          incomingStructure: conflict.incoming,
-          hasGameData: 'gameData' in conflict.incoming,
-          hasData: 'data' in conflict.incoming,
-          localId: conflict.local.id
-        });
-        await db.scoutingData.delete(conflict.local.id);
-        await db.scoutingData.put(conflict.incoming as never);
-        replaced++;
-      } else if (decision === 'skip') {
-        // Keep existing entry, do nothing
-        kept++;
-      }
+    try {
+        if (replacedCount > 0) {
+            // Send all replacements in one batch request
+            // This endpoint should use "ON CONFLICT (id) DO UPDATE" logic
+            await apiRequest('/matches/bulk-replace', {
+                method: 'POST',
+                body: JSON.stringify({ entries: entriesToReplace }),
+            });
+        }
+
+        toast.success(
+            `Conflict resolution complete! ${replacedCount} entries replaced, ${keptCount} entries kept.`
+        );
+
+        // Reset UI State
+        setShowConflictDialog(false);
+        setCurrentConflicts([]);
+        setCurrentConflictIndex(0);
+        setConflictResolutions(new Map());
+        setResolutionHistory([]);
+        
+    } catch (error) {
+        console.error('Failed to apply resolutions:', error);
+        toast.error('Failed to save resolutions to the server.');
     }
+};
 
-    toast.success(
-      `Conflict resolution complete! ${replaced} entries replaced, ${kept} entries kept.`
-    );
-
-    // Reset state
-    setShowConflictDialog(false);
-    setCurrentConflicts([]);
-    setCurrentConflictIndex(0);
-    setConflictResolutions(new Map());
-    setResolutionHistory([]);
-  };
-
-  // Batch resolve all remaining conflicts
-  const handleBatchResolve = async (action: 'replace' | 'skip') => {
+  /**
+ * Batch resolves all remaining conflicts.
+ * Offloads the heavy lifting of bulk replacement to the Postgres API.
+ */
+const handleBatchResolve = async (action: 'replace' | 'skip') => {
     setIsProcessing(true);
     
     try {
-      // Apply action to all remaining conflicts
-      const newResolutions = new Map(conflictResolutions);
-      for (let i = currentConflictIndex; i < currentConflicts.length; i++) {
-        const conflict = currentConflicts[i];
-        if (!conflict) continue; // Skip if undefined
-        const key = getConflictKey(conflict);
-        newResolutions.set(key, action);
-      }
-      setConflictResolutions(newResolutions);
-
-      // Apply immediately
-      let replaced = 0;
-      let skipped = 0;
-
-      const remainingCount = currentConflicts.length - currentConflictIndex;
-      debugLog(`🔄 Batch ${action}ing ${remainingCount} conflicts...`);
-
-      for (let i = currentConflictIndex; i < currentConflicts.length; i++) {
-        const conflict = currentConflicts[i];
-        if (!conflict) continue; // Skip if undefined
-        const conflictKey = getConflictKey(conflict);
-        const decision = newResolutions.get(conflictKey);
-
-        if (decision === 'replace') {
-          await db.scoutingData.delete(conflict.local.id);
-          await db.scoutingData.put(conflict.incoming as never);
-          replaced++;
-        } else {
-          skipped++;
-        }
+        const remainingConflicts = currentConflicts.slice(currentConflictIndex);
         
-        // Log progress for large batches
-        if (i % 50 === 0 && i > currentConflictIndex) {
-          debugLog(`📊 Progress: ${i - currentConflictIndex}/${remainingCount} conflicts processed`);
+        if (action === 'skip') {
+            // Nothing to send to the server if we aren't replacing anything
+            toast.success(`Batch skip complete! ${remainingConflicts.length} entries kept.`);
+        } else {
+            // Filter incoming data for all items marked for replacement
+            const entriesToReplace = remainingConflicts.map(c => c.incoming);
+
+            debugLog(`🔄 Batch replacing ${entriesToReplace.length} entries via API...`);
+
+            // Use the bulk-replace endpoint we established earlier
+            await apiRequest('/matches/bulk-replace', {
+                method: 'POST',
+                body: JSON.stringify({ entries: entriesToReplace }),
+            });
+
+            debugLog(`✅ Batch replacement complete.`);
+            toast.success(`Batch operation complete! ${entriesToReplace.length} entries replaced.`);
         }
-      }
 
-      debugLog(`✅ Batch operation complete: ${replaced} replaced, ${skipped} skipped`);
-
-      toast.success(
-        `Batch operation complete! ${replaced} entries replaced, ${skipped} entries kept.`
-      );
-
-      // Reset state
-      setShowConflictDialog(false);
-      setCurrentConflicts([]);
-      setCurrentConflictIndex(0);
-      setConflictResolutions(new Map());
-      setResolutionHistory([]);
+        // Reset UI state
+        setShowConflictDialog(false);
+        setCurrentConflicts([]);
+        setCurrentConflictIndex(0);
+        setConflictResolutions(new Map());
+        setResolutionHistory([]);
+    } catch (error) {
+        console.error('Batch resolution failed:', error);
+        toast.error('Failed to process batch resolution.');
     } finally {
-      setIsProcessing(false);
+        setIsProcessing(false);
     }
-  };
+};
 
   // Undo last conflict resolution
   const handleUndo = () => {
@@ -169,7 +155,11 @@ export const useConflictResolution = () => {
   };
 
   // Handle batch review decision (for duplicate entries)
-  const handleBatchReviewDecision = async (
+  /**
+ * Handles batch review decisions by interacting with the Postgres API.
+ * Replaces O(N^2) client-side scans with efficient server-side batching.
+ */
+const handleBatchReviewDecision = async (
     batchReviewEntries: ScoutingEntryBase[],
     pendingConflicts: ConflictInfo[],
     decision: 'replace-all' | 'skip-all' | 'review-each'
@@ -178,110 +168,56 @@ export const useConflictResolution = () => {
     
     try {
       if (decision === 'replace-all') {
-        debugLog(`🔄 Batch replacing ${batchReviewEntries.length} duplicate entries...`);
-        let replaced = 0;
-        for (let i = 0; i < batchReviewEntries.length; i++) {
-        const entry = batchReviewEntries[i];
-        if (!entry) continue; // Skip if undefined
-        const matchNumber = entry.matchNumber;
-        const teamNumber = entry.teamNumber;
-        const alliance = entry.allianceColor;
-        const eventKey = entry.eventKey;
+        debugLog(`🔄 Batch replacing ${batchReviewEntries.length} entries via API...`);
         
-        const existing = await db.scoutingData
-          .toArray()
-          .then(entries => entries.find((e: any) => 
-            e.matchNumber === matchNumber &&
-            e.teamNumber === teamNumber &&
-            e.allianceColor === alliance &&
-            e.eventKey === eventKey
-          ));
+        // We use our batch-replace endpoint which handles the "Delete existing + Insert new" 
+        // logic atomically on the server based on match/team/event keys.
+        await apiRequest('/matches/bulk-replace', {
+          method: 'POST',
+          body: JSON.stringify({ entries: batchReviewEntries }),
+        });
+
+        toast.success(`Replaced ${batchReviewEntries.length} entries with incoming data`);
         
-        if (existing) {
-          await db.scoutingData.delete(existing.id);
-        }
-        await db.scoutingData.put(entry as never);
-        replaced++;
-        
-        // Log progress for large batches
-        if (i % 50 === 0 && i > 0) {
-          debugLog(`📊 Progress: ${i}/${batchReviewEntries.length} entries replaced`);
-        }
-      }
-      debugLog(`✅ Batch replace complete: ${replaced} entries replaced`);
-      toast.success(`Replaced ${replaced} entries with incoming data`);
+        // Resolve UI state for any remaining non-batch conflicts
+        return processRemainingConflicts(pendingConflicts);
+      } 
       
-      // Check if there are pending conflicts after batch
-      if (pendingConflicts.length > 0) {
-        setCurrentConflicts(pendingConflicts);
-        setCurrentConflictIndex(0);
-        setConflictResolutions(new Map());
-        setShowConflictDialog(true);
-        return { hasMoreConflicts: true };
+      else if (decision === 'skip-all') {
+        toast.success(`Kept local entries unchanged`);
+        return processRemainingConflicts(pendingConflicts);
+      } 
+      
+      else if (decision === 'review-each') {
+        // Instead of fetching every entry manually, we ask the server 
+        // to populate the conflict details (local vs incoming) for the review UI.
+        const conflictsForReview = await apiRequest<ConflictInfo[]>('/matches/resolve/prepare-review', {
+          method: 'POST',
+          body: JSON.stringify({ entries: batchReviewEntries }),
+        });
+        
+        return processRemainingConflicts([...conflictsForReview, ...pendingConflicts]);
       }
       
       return { hasMoreConflicts: false };
-      
-    } else if (decision === 'skip-all') {
-      toast.success(`Kept ${batchReviewEntries.length} local entries unchanged`);
-      
-      // Check if there are pending conflicts after batch
-      if (pendingConflicts.length > 0) {
-        setCurrentConflicts(pendingConflicts);
-        setCurrentConflictIndex(0);
-        setConflictResolutions(new Map());
-        setShowConflictDialog(true);
-        return { hasMoreConflicts: true };
-      }
-      
-      return { hasMoreConflicts: false };
-      
-    } else if (decision === 'review-each') {
-      // Convert batch entries to conflicts for individual review
-      const batchConflicts: ConflictInfo[] = await Promise.all(
-        batchReviewEntries.map(async (entry) => {
-          const matchNumber = entry.matchNumber;
-          const teamNumber = entry.teamNumber;
-          const eventKey = entry.eventKey;
-          
-          // Find existing local entry
-          const local = await db.scoutingData
-            .toArray()
-            .then((entries: any[]) => entries.find((e: any) => 
-              e.matchNumber === matchNumber &&
-              e.teamNumber === teamNumber &&
-              e.eventKey === eventKey
-            ));
-          
-          const changedFields = local
-            ? computeChangedFields(local as ScoutingEntryBase, entry)
-            : [];
-          
-          return {
-            incoming: entry,
-            local: local as ScoutingEntryBase,
-            conflictType: 'corrected-vs-uncorrected' as const,
-            isNewerIncoming: false,
-            changedFields
-          };
-        })
-      );
-      
-      // Add pending conflicts after batch conflicts
-      const allConflicts = [...batchConflicts, ...pendingConflicts];
-      setCurrentConflicts(allConflicts);
-      setCurrentConflictIndex(0);
-      setConflictResolutions(new Map());
-      setShowConflictDialog(true);
-      
-      return { hasMoreConflicts: true };
-    }
-    
-    return { hasMoreConflicts: false };
     } finally {
       setIsProcessing(false);
     }
   };
+
+/**
+ * Helper to update state if more conflicts exist
+ */
+const processRemainingConflicts = (conflicts: ConflictInfo[]) => {
+  if (conflicts.length > 0) {
+    setCurrentConflicts(conflicts);
+    setCurrentConflictIndex(0);
+    setConflictResolutions(new Map());
+    setShowConflictDialog(true);
+    return { hasMoreConflicts: true };
+  }
+  return { hasMoreConflicts: false };
+};
 
   return {
     // State

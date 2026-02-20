@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Upload, Info } from 'lucide-react';
 import { useWebRTC } from '@/core/contexts/WebRTCContext';
-import { pitDB, saveScoutingEntries } from '@/core/db/database';
+import { savePitScoutingEntry, saveScoutingEntries } from '@/core/db/database';
 import { gamificationDB as gameDB } from '@/game-template/gamification';
 import { toast } from 'sonner';
 import {
@@ -159,7 +159,8 @@ export function WebRTCPushedDataDialog() {
 
         if (entries && Array.isArray(entries)) {
           for (const entry of entries) {
-            await pitDB.pitScoutingData.put(entry);
+            // await pitDB.pitScoutingData.put(entry);
+            await savePitScoutingEntry(entry);
           }
           importedCount = entries.length;
           console.log('✅ Imported', importedCount, 'pit scouting entries');

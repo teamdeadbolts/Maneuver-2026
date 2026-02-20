@@ -66,8 +66,9 @@ import {
 import logo from "../src/assets/Maneuver Wordmark Vertical.png";
 import { generateDemoEvent, generateDemoEventScheduleOnly } from "@/core/lib/demoDataGenerator";
 import { generate2026GameData } from "@/game-template/demoDataGenerator2026";
-import { db, pitDB, gameDB } from "@/db";
+import { gameDB } from "@/db";
 import { clearEventCache, clearEventValidationResults, getCachedTBAEventMatches } from "@/core/lib/tbaCache";
+import { deletePitScoutingEntriesByEvent, deleteScoutingEntriesByEvent, loadAllScoutingEntries } from "./core/db/database";
 
 // Mock implementations for missing template parts
 const mockConfig = { year: 2026, gameName: "REBUILT", scoring: { auto: {}, teleop: {}, endgame: {} } };
@@ -129,8 +130,10 @@ const clearDemoData = async () => {
   console.log('🗑️ Clearing demo data...');
   
   // Clear all demo data from databases
-  await db.scoutingData.where('eventKey').equals(DEMO_EVENT_KEY).delete();
-  await pitDB.pitScoutingData.where('eventKey').equals(DEMO_EVENT_KEY).delete();
+  // await db.scoutingData.where('eventKey').equals(DEMO_EVENT_KEY).delete();
+  await deleteScoutingEntriesByEvent(DEMO_EVENT_KEY);
+  // await pitDB.pitScoutingData.where('eventKey').equals(DEMO_EVENT_KEY).delete();
+  await deletePitScoutingEntriesByEvent(DEMO_EVENT_KEY);
   await gameDB.scouts.clear();
   await gameDB.predictions.where('eventKey').equals(DEMO_EVENT_KEY).delete();
   await gameDB.scoutAchievements.clear();
@@ -160,7 +163,8 @@ const clearDemoData = async () => {
 };
 
 const checkDemoData = async (): Promise<boolean> => {
-  const entryCount = await db.scoutingData.where('eventKey').equals(DEMO_EVENT_KEY).count();
+  // const entryCount = await db.scoutingData.where('eventKey').equals(DEMO_EVENT_KEY).count();
+  const entryCount = await loadAllScoutingEntries().then(entries => entries.filter(e => e.eventKey === DEMO_EVENT_KEY).length);
   const cachedMatches = await getCachedTBAEventMatches(DEMO_EVENT_KEY);
   return entryCount > 0 || cachedMatches.length > 0;
 };
@@ -287,14 +291,14 @@ function App() {
         });
 
         // Make databases available for debugging
-        import('@/db').then(db => {
-          (window as any).dbs = {
-            main: db.db,
-            pit: db.pitDB,
-            game: db.gameDB
-          };
-          console.log('🗄️ Databases available at window.dbs');
-        });
+        // import('@/db').then(db => {
+        //   (window as any).dbs = {
+        //     main: db.db,
+        //     pit: db.pitDB,
+        //     game: db.gameDB
+        //   };
+        //   console.log('🗄️ Databases available at window.dbs');
+        // });
       }, 2000);
     }
 

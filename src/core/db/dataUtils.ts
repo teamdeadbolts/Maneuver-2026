@@ -6,7 +6,7 @@
 import type {
   ScoutingEntryBase,
 } from '../types/scouting-entry';
-import { db, loadAllScoutingEntries, saveScoutingEntries } from './database';
+import { loadAllScoutingEntries, saveScoutingEntries, apiRequest } from './database';
 
 /**
  * Generate deterministic composite ID from entry fields
@@ -86,34 +86,43 @@ export const detectConflicts = async <TGameData = Record<string, unknown>>(
     manualReview: [],
   };
 
+  // 1. Collect all IDs to check in one go
+  const ids = incomingEntries.map(e => e.id);
+  
+  // 2. Fetch all existing records matching these IDs from Postgres
+  // This endpoint should return a Map or Array of existing records
+  const existingEntries = await apiRequest<ScoutingEntryBase<TGameData>[]>('/matches/query', {
+    method: 'POST',
+    body: JSON.stringify({ ids })
+  });
+
+  const existingMap = new Map(existingEntries.map(e => [e.id, e]));
+
+  // 3. Process logic in memory (client-side)
   for (const incoming of incomingEntries) {
-    const existing = await db.scoutingData.get(incoming.id);
+    const existing = existingMap.get(incoming.id);
 
     if (!existing) {
-      // No conflict - new entry
       result.autoImport.push(incoming);
       continue;
     }
 
-    // Check if incoming is a correction
     if (incoming.isCorrected) {
       result.autoReplace.push(incoming);
       continue;
     }
 
-    // Check timestamps (auto-replace if incoming is significantly newer)
     const timeDiff = incoming.timestamp - existing.timestamp;
     const THIRTY_SECONDS = 30 * 1000;
 
     if (timeDiff > THIRTY_SECONDS) {
       result.autoReplace.push(incoming);
     } else if (timeDiff < -THIRTY_SECONDS) {
-      // Existing is newer - don't import
+      // Existing is newer - discard incoming
       continue;
     } else {
-      // Similar timestamps - manual review needed
       result.manualReview.push({
-        existing: existing as ScoutingEntryBase<TGameData>,
+        existing,
         incoming,
       });
     }
@@ -180,23 +189,23 @@ export const findExistingEntry = async (
     return undefined;
   }
 
-  // Try with event name first (fastest)
-  if (eventKey) {
-    const entry = await db.scoutingData
-      .where({ matchNumber, teamNumber, allianceColor, eventKey })
-      .first();
+  // Construct query parameters
+  const params = new URLSearchParams({
+    matchNumber: matchNumber.toString(),
+    teamNumber: teamNumber.toString(),
+    allianceColor,
+  });
 
-    if (entry) {
-      return entry;
-    }
+  if (eventKey) {
+    params.append('eventKey', eventKey.toLowerCase());
   }
 
-  // Fallback: search without event name
-  const entries = await db.scoutingData
-    .where({ matchNumber, teamNumber, allianceColor })
-    .toArray();
+  // We use a specific 'find' endpoint or our generic query with a limit
+  const results = await apiRequest<ScoutingEntryBase[]>(`/matches/find?${params.toString()}`, {
+    method: 'GET',
+  });
 
-  return entries[0];
+  return results.length > 0 ? results[0] : undefined;
 };
 
 /**

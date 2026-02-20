@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { loadScoutingData } from "@/core/lib/scoutingDataUtils";
-import { pitDB } from "@/core/db/database";
+import { apiRequest } from "@/core/db/database";
 import { gamificationDB as gameDB } from "@/game-template/gamification";
 import { getPitScoutingStats } from "@/core/lib/pitScoutingUtils";
 
@@ -62,9 +62,13 @@ export const useDataStats = () => {
 
   const loadPitScoutingCount = useCallback(async () => {
     try {
+      // 1. Fetch aggregated stats from the API
       const pitStats = await getPitScoutingStats();
-      const pitData = await pitDB.pitScoutingData.toArray();
-      const pitSize = formatDataSize(JSON.stringify(pitData));
+
+      // 2. Instead of downloading all rows to check size, 
+      // the API should return the database-level storage size.
+      // If your API doesn't provide this yet, we use a fallback label.
+      const pitSize = "N/A";
 
       setStats(prev => ({
         ...prev,
@@ -72,7 +76,7 @@ export const useDataStats = () => {
         pitScoutingDataSize: pitSize,
       }));
     } catch (error) {
-      console.error("Error loading pit scouting data:", error);
+      console.error("Error loading pit scouting stats from API:", error);
       setStats(prev => ({
         ...prev,
         pitScoutingDataCount: 0,

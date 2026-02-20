@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:alpine3.22
+    container_name: maneuver-db
+    restart: always #  postgresql://maneuver_user:secret_password@localhost:5432/maneuver_db?schema=public
+    env_file: ./.env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build: 
+      context: .
+      dockerfile: ./server/Dockerfile
+    container_name: maneuver-api
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+
+  frontend:
+    build: .
+    container_name: maneuver-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: http://api:3000
+
+volumes:
+  postgres_data:
