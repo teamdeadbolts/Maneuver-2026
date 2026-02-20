@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef } from "react";
 import { CANVAS_CONSTANTS } from "../lib/canvasConstants";
-import { drawTeamNumbers } from "../lib/canvasUtils";
+import { drawTeamNumbersAndSpots } from "../lib/canvasUtils";
+import type { StrategyStageId, TeamStageSpots } from "@/core/hooks/useMatchStrategy";
+
+interface TeamSlotSpotVisibility {
+  showShooting: boolean;
+  showPassing: boolean;
+}
 
 // Global reference for background image (no longer needed for erasing, but kept for compatibility)
 let globalBackgroundImage: HTMLImageElement | null = null;
@@ -23,6 +29,8 @@ interface UseCanvasSetupProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
   fullscreenRef: React.RefObject<HTMLDivElement | null>;
   selectedTeams?: (number | null)[];
+  teamSlotSpotVisibility?: TeamSlotSpotVisibility[];
+  getTeamSpots?: (teamNumber: number | null, stageId: StrategyStageId) => TeamStageSpots;
   onCanvasReady?: () => void;
   onDimensionsChange?: (dimensions: { width: number; height: number }) => void;
 }
@@ -39,6 +47,8 @@ export const useCanvasSetup = ({
   containerRef,
   fullscreenRef,
   selectedTeams = [],
+  teamSlotSpotVisibility = [],
+  getTeamSpots,
   onCanvasReady,
   onDimensionsChange
 }: UseCanvasSetupProps) => {
@@ -136,7 +146,15 @@ export const useCanvasSetup = ({
 
         // LAYER 2: Draw team number overlays
         overlayCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-        drawTeamNumbers(overlayCtx, canvasWidth, canvasHeight, selectedTeams);
+        drawTeamNumbersAndSpots(
+          overlayCtx,
+          canvasWidth,
+          canvasHeight,
+          selectedTeams,
+          currentStageId as StrategyStageId,
+          teamSlotSpotVisibility,
+          getTeamSpots
+        );
 
         // LAYER 3: Load saved drawings or start fresh
         drawingCtx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -168,8 +186,16 @@ export const useCanvasSetup = ({
     if (!ctx) return;
 
     ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-    drawTeamNumbers(ctx, overlayCanvas.width, overlayCanvas.height, selectedTeams);
-  }, [selectedTeams, overlayCanvasRef]);
+    drawTeamNumbersAndSpots(
+      ctx,
+      overlayCanvas.width,
+      overlayCanvas.height,
+      selectedTeams,
+      currentStageId as StrategyStageId,
+      teamSlotSpotVisibility,
+      getTeamSpots
+    );
+  }, [selectedTeams, currentStageId, teamSlotSpotVisibility, getTeamSpots, overlayCanvasRef]);
 
   useEffect(() => {
     setupCanvas();

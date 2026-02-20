@@ -13,6 +13,11 @@ import { AllianceSelectionControls } from "./AllianceSelectionControls";
 import type { Alliance } from "@/core/lib/allianceTypes";
 import type { TeamStats } from "@/core/types/team-stats";
 
+interface TeamSlotSpotVisibility {
+    showShooting: boolean;
+    showPassing: boolean;
+}
+
 interface TeamAnalysisProps {
     selectedTeams: (number | null)[];
     availableTeams: number[];
@@ -21,6 +26,8 @@ interface TeamAnalysisProps {
     selectedBlueAlliance: string;
     selectedRedAlliance: string;
     getTeamStats: (teamNumber: number | null) => TeamStats | null;
+    teamSlotSpotVisibility: TeamSlotSpotVisibility[];
+    onTeamSlotSpotToggle: (index: number, type: 'shooting' | 'passing') => void;
     onTeamChange: (index: number, teamNumber: number | null) => void;
     onStatsTabChange: (value: string) => void;
     onBlueAllianceChange: (allianceId: string) => void;
@@ -35,6 +42,8 @@ export const TeamAnalysis = ({
     selectedBlueAlliance,
     selectedRedAlliance,
     getTeamStats,
+    teamSlotSpotVisibility,
+    onTeamSlotSpotToggle,
     onTeamChange,
     onStatsTabChange,
     onBlueAllianceChange,
@@ -111,6 +120,8 @@ export const TeamAnalysis = ({
                         availableTeams={availableTeams}
                         activeStatsTab={activeStatsTab}
                         getTeamStats={getTeamStats}
+                        teamSlotSpotVisibility={teamSlotSpotVisibility}
+                        onTeamSlotSpotToggle={onTeamSlotSpotToggle}
                         onTeamChange={onTeamChange}
                         onTouchStart={handleAllianceCardTouchStart}
                         onTouchEnd={handleAllianceCardTouchEnd}
@@ -124,6 +135,8 @@ export const TeamAnalysis = ({
                         availableTeams={availableTeams}
                         activeStatsTab={activeStatsTab}
                         getTeamStats={getTeamStats}
+                        teamSlotSpotVisibility={teamSlotSpotVisibility}
+                        onTeamSlotSpotToggle={onTeamSlotSpotToggle}
                         onTeamChange={onTeamChange}
                         onTouchStart={handleAllianceCardTouchStart}
                         onTouchEnd={handleAllianceCardTouchEnd}

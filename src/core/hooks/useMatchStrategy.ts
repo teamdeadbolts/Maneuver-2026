@@ -15,6 +15,58 @@ import { useAllTeamStats } from "@/core/hooks/useAllTeamStats";
 import type { Alliance } from "../lib/allianceTypes";
 import type { TeamStats } from "@/core/types/team-stats";
 
+export type StrategyStageId = 'autonomous' | 'teleop' | 'endgame';
+
+export interface TeamSpotPoint {
+    x: number;
+    y: number;
+}
+
+export interface TeamStageSpots {
+    shooting: TeamSpotPoint[];
+    passing: TeamSpotPoint[];
+}
+
+interface TeamSpotsByStage {
+    autonomous: TeamStageSpots;
+    teleop: TeamStageSpots;
+}
+
+const EMPTY_SPOTS: TeamStageSpots = { shooting: [], passing: [] };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function extractStageSpotsFromPath(path: unknown): TeamStageSpots {
+    if (!Array.isArray(path)) return EMPTY_SPOTS;
+
+    const shooting: TeamSpotPoint[] = [];
+    const passing: TeamSpotPoint[] = [];
+
+    path.forEach((waypoint) => {
+        if (!isRecord(waypoint)) return;
+
+        const type = typeof waypoint.type === 'string' ? waypoint.type : '';
+        if (type !== 'score' && type !== 'pass') return;
+
+        const position = isRecord(waypoint.position) ? waypoint.position : null;
+        const x = position && typeof position.x === 'number' ? position.x : null;
+        const y = position && typeof position.y === 'number' ? position.y : null;
+
+        if (x === null || y === null) return;
+        if (x < 0 || x > 1 || y < 0 || y > 1) return;
+
+        if (type === 'score') {
+            shooting.push({ x, y });
+        } else {
+            passing.push({ x, y });
+        }
+    });
+
+    return { shooting, passing };
+}
+
 export const useMatchStrategy = () => {
     const [selectedTeams, setSelectedTeams] = useState<(number | null)[]>(Array(6).fill(null));
     const [availableTeams, setAvailableTeams] = useState<number[]>([]);
@@ -23,6 +75,7 @@ export const useMatchStrategy = () => {
     const [confirmedAlliances, setConfirmedAlliances] = useState<Alliance[]>([]);
     const [selectedBlueAlliance, setSelectedBlueAlliance] = useState<string>("");
     const [selectedRedAlliance, setSelectedRedAlliance] = useState<string>("");
+    const [teamSpotsByTeam, setTeamSpotsByTeam] = useState<Record<number, TeamSpotsByStage>>({});
 
     // Get all team stats using centralized hook
     const { teamStats: allTeamStats } = useAllTeamStats();
@@ -131,6 +184,37 @@ export const useMatchStrategy = () => {
                 )] as number[];
                 teams.sort((a, b) => a - b);
                 setAvailableTeams(teams);
+
+                const spotsByTeam: Record<number, TeamSpotsByStage> = {};
+
+                data.forEach((entry) => {
+                    const teamNumber = entry.teamNumber;
+                    if (!teamNumber || !isRecord(entry.gameData)) return;
+
+                    const autoPath = isRecord(entry.gameData.auto)
+                        ? entry.gameData.auto.autoPath
+                        : undefined;
+                    const teleopPath = isRecord(entry.gameData.teleop)
+                        ? entry.gameData.teleop.teleopPath
+                        : undefined;
+
+                    const autoSpots = extractStageSpotsFromPath(autoPath);
+                    const teleopSpots = extractStageSpotsFromPath(teleopPath);
+
+                    if (!spotsByTeam[teamNumber]) {
+                        spotsByTeam[teamNumber] = {
+                            autonomous: { shooting: [], passing: [] },
+                            teleop: { shooting: [], passing: [] },
+                        };
+                    }
+
+                    spotsByTeam[teamNumber].autonomous.shooting.push(...autoSpots.shooting);
+                    spotsByTeam[teamNumber].autonomous.passing.push(...autoSpots.passing);
+                    spotsByTeam[teamNumber].teleop.shooting.push(...teleopSpots.shooting);
+                    spotsByTeam[teamNumber].teleop.passing.push(...teleopSpots.passing);
+                });
+
+                setTeamSpotsByTeam(spotsByTeam);
             } catch (error) {
                 console.error("Error loading scouting data:", error);
             }
@@ -167,6 +251,23 @@ export const useMatchStrategy = () => {
         newSelectedTeams[index] = teamNumber;
         setSelectedTeams(newSelectedTeams);
     };
+
+    const getTeamSpots = useCallback((teamNumber: number | null, stageId: StrategyStageId): TeamStageSpots => {
+        if (!teamNumber) return EMPTY_SPOTS;
+
+        const teamSpots = teamSpotsByTeam[teamNumber];
+        if (!teamSpots) return EMPTY_SPOTS;
+
+        if (stageId === 'autonomous') {
+            return teamSpots.autonomous;
+        }
+
+        if (stageId === 'teleop' || stageId === 'endgame') {
+            return teamSpots.teleop;
+        }
+
+        return EMPTY_SPOTS;
+    }, [teamSpotsByTeam]);
 
     const applyAllianceToRed = (allianceId: string) => {
         setSelectedRedAlliance(allianceId === "none" ? "" : allianceId);
@@ -208,6 +309,7 @@ export const useMatchStrategy = () => {
 
         // Functions
         getTeamStats,
+        getTeamSpots,
         handleTeamChange,
         applyAllianceToRed,
         applyAllianceToBlue,

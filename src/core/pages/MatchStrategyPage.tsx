@@ -34,6 +34,11 @@ interface MatchStrategyPageProps {
     fieldImage?: string;
 }
 
+interface TeamSlotSpotVisibility {
+    showShooting: boolean;
+    showPassing: boolean;
+}
+
 // ============================================================================
 // COMPONENT
 // ============================================================================
@@ -43,6 +48,9 @@ const MatchStrategyPage = (props: MatchStrategyPageProps) => {
     
     const [activeTab, setActiveTab] = useState("autonomous");
     const [activeStatsTab, setActiveStatsTab] = useState("overall");
+    const [teamSlotSpotVisibility, setTeamSlotSpotVisibility] = useState<TeamSlotSpotVisibility[]>(
+        Array.from({ length: 6 }, () => ({ showShooting: true, showPassing: true }))
+    );
 
     const {
         selectedTeams,
@@ -53,11 +61,36 @@ const MatchStrategyPage = (props: MatchStrategyPageProps) => {
         selectedBlueAlliance,
         selectedRedAlliance,
         getTeamStats,
+        getTeamSpots,
         handleTeamChange,
         applyAllianceToRed,
         applyAllianceToBlue,
         setMatchNumber
     } = useMatchStrategy();
+
+    const handleTeamChangeWithSpotDefaults = (index: number, teamNumber: number | null) => {
+        handleTeamChange(index, teamNumber);
+        setTeamSlotSpotVisibility((prev) => {
+            const next = [...prev];
+            next[index] = { showShooting: true, showPassing: true };
+            return next;
+        });
+    };
+
+    const handleTeamSlotSpotToggle = (index: number, type: 'shooting' | 'passing') => {
+        setTeamSlotSpotVisibility((prev) => {
+            const next = [...prev];
+            const current = next[index] ?? { showShooting: true, showPassing: true };
+
+            next[index] = {
+                ...current,
+                showShooting: type === 'shooting' ? !current.showShooting : current.showShooting,
+                showPassing: type === 'passing' ? !current.showPassing : current.showPassing,
+            };
+
+            return next;
+        });
+    };
 
     const handleClearAll = () => clearAllStrategies(setActiveTab, activeTab);
     const handleSaveAll = () => saveAllStrategyCanvases(matchNumber, selectedTeams, fieldImage);
@@ -81,6 +114,8 @@ const MatchStrategyPage = (props: MatchStrategyPageProps) => {
                         fieldImagePath={fieldImage}
                         activeTab={activeTab}
                         selectedTeams={selectedTeams}
+                        teamSlotSpotVisibility={teamSlotSpotVisibility}
+                        getTeamSpots={getTeamSpots}
                         onTabChange={setActiveTab}
                     />
 
@@ -92,7 +127,9 @@ const MatchStrategyPage = (props: MatchStrategyPageProps) => {
                         selectedBlueAlliance={selectedBlueAlliance}
                         selectedRedAlliance={selectedRedAlliance}
                         getTeamStats={getTeamStats}
-                        onTeamChange={handleTeamChange}
+                        teamSlotSpotVisibility={teamSlotSpotVisibility}
+                        onTeamSlotSpotToggle={handleTeamSlotSpotToggle}
+                        onTeamChange={handleTeamChangeWithSpotDefaults}
                         onStatsTabChange={setActiveStatsTab}
                         onBlueAllianceChange={applyAllianceToBlue}
                         onRedAllianceChange={applyAllianceToRed}

@@ -6,10 +6,16 @@
  */
 
 import { Card } from "@/core/components/ui/card";
+import { Button } from "@/core/components/ui/button";
 import { TeamSelector } from "./TeamSelector";
 import { TeamStatsDetail } from "./TeamStatsDetail";
 import { TeamStatsHeaders } from "./TeamStatsHeaders";
 import type { TeamStats } from "@/core/types/team-stats";
+
+interface TeamSlotSpotVisibility {
+    showShooting: boolean;
+    showPassing: boolean;
+}
 
 interface AllianceCardProps {
     alliance: 'red' | 'blue';
@@ -17,6 +23,8 @@ interface AllianceCardProps {
     availableTeams: number[];
     activeStatsTab: string;
     getTeamStats: (teamNumber: number | null) => TeamStats | null;
+    teamSlotSpotVisibility: TeamSlotSpotVisibility[];
+    onTeamSlotSpotToggle: (index: number, type: 'shooting' | 'passing') => void;
     onTeamChange: (index: number, teamNumber: number | null) => void;
     onTouchStart?: (e: React.TouchEvent) => void;
     onTouchEnd?: (e: React.TouchEvent) => void;
@@ -28,6 +36,8 @@ export const AllianceCard = ({
     availableTeams,
     activeStatsTab,
     getTeamStats,
+    teamSlotSpotVisibility,
+    onTeamSlotSpotToggle,
     onTeamChange,
     onTouchStart,
     onTouchEnd
@@ -58,6 +68,7 @@ export const AllianceCard = ({
                         const teamIndex = startIndex + index;
                         const team = selectedTeams[teamIndex] ?? null;
                         const stats = getTeamStats(team);
+                        const visibility = teamSlotSpotVisibility[teamIndex] ?? { showShooting: true, showPassing: true };
 
                         return (
                             <Card key={teamIndex} className="p-3">
@@ -77,6 +88,29 @@ export const AllianceCard = ({
                                                 onValueChange={(value) => onTeamChange(teamIndex, value)}
                                             />
                                         </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={visibility.showShooting ? "default" : "outline"}
+                                            className="h-7 px-2 text-xs"
+                                            disabled={!team}
+                                            onClick={() => onTeamSlotSpotToggle(teamIndex, 'shooting')}
+                                        >
+                                            Shooting Spots
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant={visibility.showPassing ? "default" : "outline"}
+                                            className="h-7 px-2 text-xs"
+                                            disabled={!team}
+                                            onClick={() => onTeamSlotSpotToggle(teamIndex, 'passing')}
+                                        >
+                                            Passing Spots
+                                        </Button>
                                     </div>
 
                                     {/* Team Stats */}

@@ -20,19 +20,29 @@ import { FieldCanvasHeader } from "./FieldCanvasHeader";
 import { MobileStageControls } from "./MobileStageControls";
 import { DrawingControls } from "./DrawingControls";
 import { FloatingControls } from "./FloatingControls";
+import type { StrategyStageId, TeamStageSpots } from "@/core/hooks/useMatchStrategy";
+
+interface TeamSlotSpotVisibility {
+    showShooting: boolean;
+    showPassing: boolean;
+}
 
 interface FieldCanvasProps {
     fieldImagePath: string;
     stageId?: string;
     onStageChange?: (newStageId: string) => void;
     selectedTeams?: (number | null)[];
+    teamSlotSpotVisibility?: TeamSlotSpotVisibility[];
+    getTeamSpots?: (teamNumber: number | null, stageId: StrategyStageId) => TeamStageSpots;
 }
 
 const FieldCanvas = ({
     fieldImagePath,
     stageId = "default",
     onStageChange,
-    selectedTeams = []
+    selectedTeams = [],
+    teamSlotSpotVisibility = [],
+    getTeamSpots,
 }: FieldCanvasProps) => {
     // Canvas refs for the 3-layer architecture
     const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -95,6 +105,8 @@ const FieldCanvas = ({
         containerRef,
         fullscreenRef,
         selectedTeams,
+        teamSlotSpotVisibility,
+        getTeamSpots,
         onCanvasReady: handleCanvasReady,
         onDimensionsChange: setCanvasDimensions
     });
@@ -394,6 +406,17 @@ const FieldCanvas = ({
                     onTouchEnd={(e) => e.stopPropagation()}
                 >
                     {renderCanvasStack()}
+                </div>
+            </div>
+
+            <div className="mt-2 px-2 py-1 text-xs text-muted-foreground border rounded-md bg-background/60">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="font-medium text-foreground">Key:</span>
+                    <span>Slot 1: ● circle</span>
+                    <span>Slot 2: ▲ triangle</span>
+                    <span>Slot 3: ★ star</span>
+                    <span>Filled = shooting</span>
+                    <span>Outline = passing</span>
                 </div>
             </div>
         </div>
