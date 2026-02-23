@@ -79,6 +79,7 @@ export interface ConnectedScout {
   status: 'connecting' | 'connected' | 'disconnected';
   offer: string; // Add offer field for compatibility
   signalingPeerId?: string; // Signaling server peerId for targeting messages
+  pendingSince?: number; // Timestamp while waiting for answer
 }
 
 export interface ReceivedData {
@@ -145,6 +146,8 @@ interface WebRTCContextValue {
 }
 
 const WebRTCContext = createContext<WebRTCContextValue | undefined>(undefined);
+
+const PENDING_SCOUT_STALE_MS = 20_000;
 
 export function WebRTCProvider({ children }: { children: ReactNode }) {
   // Persist mode to localStorage so it survives navigation
@@ -415,7 +418,26 @@ export function WebRTCProvider({ children }: { children: ReactNode }) {
         pendingScoutsRef.current.delete(scoutId);
         updateConnectedScouts();
         console.log(`✅ Scout ${scoutName} moved to connected list`);
+        return;
       }
+
+      // Scout may already be in connected list (e.g. after answer was processed first).
+      // Still trigger a state update so UI reacts to dataChannel.readyState=open.
+      const connectedScout = connectedScoutsRef.current.find(s => s.id === scoutId);
+      if (connectedScout) {
+        connectedScout.status = 'connected';
+        updateConnectedScouts();
+        console.log(`✅ Scout ${scoutName} data channel opened (existing connected entry updated)`);
+      }
+    };
+
+    dataChannel.onclose = () => {
+      const connectedScout = connectedScoutsRef.current.find(s => s.id === scoutId);
+      if (connectedScout) {
+        connectedScout.status = 'disconnected';
+        updateConnectedScouts();
+      }
+      console.log(`🔌 Data channel closed for scout: ${scoutName}`);
     };
 
     dataChannel.onmessage = (event) => {
@@ -430,9 +452,43 @@ export function WebRTCProvider({ children }: { children: ReactNode }) {
       dataChannel,
       channel: dataChannel, // Alias for backward compatibility
       status: 'connecting',
-      offer: '' // Will be set below
+      offer: '', // Will be set below
+      pendingSince: Date.now(),
     };
     pendingScoutsRef.current.set(scoutId, scout);
+
+    // Expire stale pending scouts so a scout can rejoin if negotiation got stuck
+    setTimeout(() => {
+      const stillPending = pendingScoutsRef.current.get(scoutId);
+      if (stillPending !== scout) {
+        return;
+      }
+
+      const isConnected = connectedScoutsRef.current.some((s) => s.id === scoutId);
+      if (isConnected) {
+        return;
+      }
+
+      if (scout.connection.connectionState === 'new' || scout.connection.connectionState === 'connecting') {
+        console.warn(`⏱️ Pending scout ${scout.name} timed out, cleaning up stale pending connection`);
+        try {
+          scout.connection.close();
+        } catch {
+          // Best-effort cleanup
+        }
+        try {
+          scout.dataChannel?.close();
+        } catch {
+          // Best-effort cleanup
+        }
+
+        for (const [key, value] of pendingScoutsRef.current.entries()) {
+          if (value === scout) {
+            pendingScoutsRef.current.delete(key);
+          }
+        }
+      }
+    }, PENDING_SCOUT_STALE_MS);
 
     // Monitor connection state
     connection.oniceconnectionstatechange = () => {
@@ -513,6 +569,26 @@ export function WebRTCProvider({ children }: { children: ReactNode }) {
 
     const answer: RTCSessionDescriptionInit = JSON.parse(answerString);
     await scout.connection.setRemoteDescription(answer);
+
+    // Apply any ICE candidates that arrived before remote description was set
+    const candidateKeys = [scout.signalingPeerId, scout.id].filter(Boolean) as string[];
+    for (const candidateKey of candidateKeys) {
+      const bufferKey = `lead:${candidateKey}`;
+      const bufferedCandidates = pendingIceCandidatesRef.current.get(bufferKey);
+      if (!bufferedCandidates || bufferedCandidates.length === 0) {
+        continue;
+      }
+
+      console.log(`📦 Context: Processing ${bufferedCandidates.length} buffered lead ICE candidates for ${scout.name}`);
+      for (const candidateInit of bufferedCandidates) {
+        try {
+          await scout.connection.addIceCandidate(new RTCIceCandidate(candidateInit));
+        } catch (err) {
+          console.error('❌ Failed to add buffered lead ICE candidate:', err);
+        }
+      }
+      pendingIceCandidatesRef.current.delete(bufferKey);
+    }
     
     // Move from pending to connected
     pendingScoutsRef.current.delete(scoutId);
@@ -1070,10 +1146,63 @@ export function WebRTCProvider({ children }: { children: ReactNode }) {
           // Scout joined - check if already connected or pending
           const existingPending = pendingScoutsRef.current.get(message.peerId);
           const existingConnected = connectedScoutsRef.current.find(s => s.signalingPeerId === message.peerId);
-          
-          if (existingPending || existingConnected) {
-            console.log('👑 Context: Scout already has connection, ignoring duplicate join');
-            return;
+
+          if (existingPending) {
+            const pendingAgeMs = Date.now() - (existingPending.pendingSince ?? Date.now());
+            const pendingConnectionState = existingPending.connection.connectionState;
+            const pendingIceState = existingPending.connection.iceConnectionState;
+            const stalePending =
+              pendingAgeMs > PENDING_SCOUT_STALE_MS ||
+              pendingConnectionState === 'failed' ||
+              pendingConnectionState === 'closed' ||
+              pendingIceState === 'failed' ||
+              pendingIceState === 'closed';
+
+            if (!stalePending) {
+              console.log('👑 Context: Scout already has active pending connection, ignoring duplicate join');
+              return;
+            }
+
+            console.warn(`♻️ Context: Replacing stale pending scout connection for ${message.peerName || message.peerId}`);
+            try {
+              existingPending.connection.close();
+            } catch {
+              // Best-effort cleanup
+            }
+            try {
+              existingPending.dataChannel?.close();
+            } catch {
+              // Best-effort cleanup
+            }
+
+            for (const [key, value] of pendingScoutsRef.current.entries()) {
+              if (value === existingPending) {
+                pendingScoutsRef.current.delete(key);
+              }
+            }
+          }
+
+          if (existingConnected) {
+            const state = existingConnected.connection.connectionState;
+            const canReplace = existingConnected.status === 'disconnected' || state === 'disconnected' || state === 'failed' || state === 'closed';
+            if (!canReplace) {
+              console.log('👑 Context: Scout already connected, ignoring duplicate join');
+              return;
+            }
+
+            console.warn(`♻️ Context: Replacing stale connected scout entry for ${existingConnected.name}`);
+            try {
+              existingConnected.connection.close();
+            } catch {
+              // Best-effort cleanup
+            }
+            try {
+              existingConnected.dataChannel?.close();
+            } catch {
+              // Best-effort cleanup
+            }
+            connectedScoutsRef.current = connectedScoutsRef.current.filter(s => s !== existingConnected);
+            updateConnectedScouts();
           }
           
           // Scout joined - create offer
@@ -1171,7 +1300,12 @@ export function WebRTCProvider({ children }: { children: ReactNode }) {
                   await scout.connection.addIceCandidate(candidate);
                   console.log('✅ Context: ICE candidate added successfully');
                 } else {
-                  console.warn('⚠️ Context: Remote description not set yet, cannot add ICE candidate');
+                  const bufferKey = `lead:${message.peerId}`;
+                  if (!pendingIceCandidatesRef.current.has(bufferKey)) {
+                    pendingIceCandidatesRef.current.set(bufferKey, []);
+                  }
+                  pendingIceCandidatesRef.current.get(bufferKey)!.push(message.data as RTCIceCandidateInit);
+                  console.log(`📦 Context: Buffered lead ICE candidate for ${message.peerId} (${pendingIceCandidatesRef.current.get(bufferKey)!.length} queued)`);
                 }
               } else {
                 console.warn(`⚠️ Context: No scout connection found for peerId ${message.peerId}`);
@@ -1202,7 +1336,7 @@ export function WebRTCProvider({ children }: { children: ReactNode }) {
       } catch (err) {
         console.error('❌ Context signaling error:', err);
       }
-    }, [mode, displayName]),
+    }, [mode, displayName, updateConnectedScouts]),
   });
   
   // Store signaling in ref

@@ -6,7 +6,7 @@
  * Supports auto-cycling, playback controls, and smart compression.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/core/components/ui/button";
 import { Input } from "@/core/components/ui/input";
@@ -50,6 +50,7 @@ export interface UniversalFountainGeneratorProps {
   title: string;
   description: string;
   noDataMessage: string;
+  settingsContent?: ReactNode;
 }
 
 export const UniversalFountainGenerator = ({
@@ -60,7 +61,8 @@ export const UniversalFountainGenerator = ({
   compressData: customCompress,
   title,
   description,
-  noDataMessage
+  noDataMessage,
+  settingsContent
 }: UniversalFountainGeneratorProps) => {
   const [packets, setPackets] = useState<FountainPacket[]>([]);
   const [currentPacketIndex, setCurrentPacketIndex] = useState(0);
@@ -342,7 +344,7 @@ export const UniversalFountainGenerator = ({
   const dataSizeInfo = getDataSizeInfo();
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center gap-6 px-4 pt-16 pb-6">
+    <div className="min-h-screen w-full flex flex-col items-center gap-6 px-4 pt-16 pb-32">
       <div className="flex flex-col items-center gap-4 max-w-md w-full pb-4">
         {/* Navigation Header */}
         <div className="flex items-center justify-between w-full">
@@ -417,6 +419,12 @@ export const UniversalFountainGenerator = ({
                   {profilePresets.find(p => p.value === fountainProfile)?.description}
                 </p>
               </div>
+
+              {settingsContent && (
+                <div className="pt-2 border-t">
+                  {settingsContent}
+                </div>
+              )}
 
               <Button
                 onClick={generateFountainPackets}

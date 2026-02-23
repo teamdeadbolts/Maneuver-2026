@@ -150,8 +150,8 @@ export function ConnectedScoutCard({
     };
 
     return (
-        <div className="flex items-center justify-between p-3 border rounded-lg">
-            <div className="flex flex-col gap-1 flex-1">
+        <div className="flex flex-col gap-3 p-3 border rounded-lg sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1 flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                     {isRequesting ? (
                         <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
@@ -177,12 +177,13 @@ export function ConnectedScoutCard({
                     )}
                 </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full gap-2 sm:w-auto sm:flex-none">
                 <Button
                     size="sm"
                     variant="default"
                     onClick={() => onRequestData(scout.id)}
                     disabled={!isReady || isRequesting}
+                    className="flex-1 sm:flex-none"
                 >
                     {isRequesting ? '...' : 'Request'}
                 </Button>
@@ -191,6 +192,7 @@ export function ConnectedScoutCard({
                     variant="outline"
                     onClick={handlePush}
                     disabled={!isReady || isPushing}
+                    className="flex-1 sm:flex-none"
                 >
                     {isPushing ? '...' : 'Push'}
                 </Button>

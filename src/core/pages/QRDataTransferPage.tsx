@@ -400,6 +400,24 @@ const QRDataTransferPage = () => {
                 title={config.title}
                 description={config.description}
                 noDataMessage={config.noDataMessage}
+                settingsContent={
+                    (dataType === 'scouting' || dataType === 'combined') ? (
+                        <div className="space-y-3">
+                            <div>
+                                <p className="text-sm font-medium">Filter Data for Generation (Optional)</p>
+                                <p className="text-xs text-muted-foreground">
+                                    These filters are applied when generating QR fountain codes.
+                                </p>
+                            </div>
+                            <DataFilteringControls
+                                data={filterPreviewData || undefined}
+                                filters={filters}
+                                onFiltersChange={setFilters}
+                                onApplyFilters={handleApplyFilters}
+                            />
+                        </div>
+                    ) : undefined
+                }
             />
         );
     }
@@ -474,25 +492,6 @@ const QRDataTransferPage = () => {
                             </Select>
                         </CardContent>
                     </Card>
-
-                    {(dataType === 'scouting' || dataType === 'combined') && (
-                        <Card className="w-full">
-                            <CardHeader>
-                                <CardTitle className="text-lg">Filter Data for Generation (Optional)</CardTitle>
-                                <CardDescription>
-                                    These filters are applied when generating QR fountain codes.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <DataFilteringControls
-                                    data={filterPreviewData || undefined}
-                                    filters={filters}
-                                    onFiltersChange={setFilters}
-                                    onApplyFilters={handleApplyFilters}
-                                />
-                            </CardContent>
-                        </Card>
-                    )}
 
                     <div className="flex flex-col gap-4 w-full">
                         <Button
