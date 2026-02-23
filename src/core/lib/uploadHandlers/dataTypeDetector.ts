@@ -1,7 +1,15 @@
-import { isMatchSchedulePayload } from "@/core/lib/matchScheduleTransfer";
+import { isMatchSchedulePayload } from '@/core/lib/matchScheduleTransfer';
 
 // Function to detect data type from JSON content
-export const detectDataType = (jsonData: unknown): 'scouting' | 'scoutProfiles' | 'pitScouting' | 'pitScoutingImagesOnly' | 'matchSchedule' | null => {
+export const detectDataType = (
+  jsonData: unknown
+):
+  | 'scouting'
+  | 'scoutProfiles'
+  | 'pitScouting'
+  | 'pitScoutingImagesOnly'
+  | 'matchSchedule'
+  | null => {
   if (!jsonData || typeof jsonData !== 'object') return null;
 
   const data = jsonData as Record<string, unknown>;
@@ -12,7 +20,12 @@ export const detectDataType = (jsonData: unknown): 'scouting' | 'scoutProfiles' 
   }
 
   // Check for pit scouting images-only format
-  if ('type' in data && data.type === 'pit-scouting-images-only' && 'entries' in data && Array.isArray(data.entries)) {
+  if (
+    'type' in data &&
+    data.type === 'pit-scouting-images-only' &&
+    'entries' in data &&
+    Array.isArray(data.entries)
+  ) {
     return 'pitScoutingImagesOnly';
   }
 
@@ -25,9 +38,14 @@ export const detectDataType = (jsonData: unknown): 'scouting' | 'scoutProfiles' 
     const entries = data.entries as unknown[];
     if (entries.length > 0 && typeof entries[0] === 'object' && entries[0] !== null) {
       const entry = entries[0] as Record<string, unknown>;
-      if (entry.teamNumber && entry.scoutName && 
-          (entry.drivetrain !== undefined || entry.weight !== undefined || 
-           entry.reportedAutoScoring !== undefined || entry.reportedTeleopScoring !== undefined)) {
+      if (
+        entry.teamNumber &&
+        entry.scoutName &&
+        (entry.drivetrain !== undefined ||
+          entry.weight !== undefined ||
+          entry.reportedAutoScoring !== undefined ||
+          entry.reportedTeleopScoring !== undefined)
+      ) {
         return 'pitScouting';
       }
     }

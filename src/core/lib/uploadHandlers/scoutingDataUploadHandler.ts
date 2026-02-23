@@ -1,18 +1,9 @@
-import { toast } from "sonner";
-import { 
-  loadScoutingData, 
-  saveScoutingData, 
-  detectConflicts,
-  type ConflictInfo
-} from "@/core/lib/scoutingDataUtils";
-import type { ImportResult, ScoutingEntryBase } from "@/types/scouting-entry";
-import { apiRequest } from "@/core/db/database";
+import { toast } from 'sonner';
+import { saveScoutingData, detectConflicts, type ConflictInfo } from '@/core/lib/scoutingDataUtils';
+import type { ImportResult, ScoutingEntryBase } from '@/types/scouting-entry';
+import { apiRequest } from '@/core/db/database';
 
-export type UploadMode = "append" | "overwrite" | "smart-merge";
-
-interface RawScoutingData {
-  entries: ScoutingEntryBase[];
-}
+export type UploadMode = 'append' | 'overwrite' | 'smart-merge';
 
 // Return type for async upload operations that may have conflicts
 export interface UploadResult {
@@ -30,34 +21,37 @@ export interface UploadResult {
  * Handles uploading scouting data from an external source (JSON/QR)
  * Offloads validation and merging logic to the Postgres API
  */
-export const handleScoutingDataUpload = async (jsonData: unknown, mode: UploadMode): Promise<UploadResult> => {
+export const handleScoutingDataUpload = async (
+  jsonData: unknown,
+  mode: UploadMode
+): Promise<UploadResult> => {
   // 1. Basic Format Validation
   let newEntries: ScoutingEntryBase[] = [];
   if (
-    typeof jsonData === "object" &&
+    typeof jsonData === 'object' &&
     jsonData !== null &&
-    "entries" in jsonData &&
+    'entries' in jsonData &&
     Array.isArray((jsonData as any).entries)
   ) {
     newEntries = (jsonData as any).entries;
   } else {
-    toast.error("Invalid scouting data format.");
+    toast.error('Invalid scouting data format.');
     return { hasConflicts: false };
   }
 
   if (newEntries.length === 0) {
-    toast.error("No valid scouting data found");
+    toast.error('No valid scouting data found');
     return { hasConflicts: false };
   }
 
   // 2. Handle Simple Modes via existing API endpoints
-  if (mode === "overwrite") {
+  if (mode === 'overwrite') {
     await saveScoutingData(newEntries); // Our new API-based save function
     toast.success(`Overwritten with ${newEntries.length} entries`);
     return { hasConflicts: false };
   }
 
-  if (mode === "append") {
+  if (mode === 'append') {
     // We use the specialized import endpoint to let Postgres handle deduplication
     const result = await apiRequest<ImportResult>('/matches/import', {
       method: 'POST',
@@ -68,15 +62,15 @@ export const handleScoutingDataUpload = async (jsonData: unknown, mode: UploadMo
   }
 
   // 3. Smart Merge via API
-  if (mode === "smart-merge") {
+  if (mode === 'smart-merge') {
     // Call our server-side conflict detector
     const conflictResult = await detectConflicts(newEntries);
-    
+
     const results = { added: 0, replaced: 0 };
 
     // Process Auto-Imports and Auto-Replaces in a single batch
     const autoProcessList = [...conflictResult.autoImport, ...conflictResult.autoReplace];
-    
+
     if (autoProcessList.length > 0) {
       await apiRequest('/matches/bulk-replace', {
         method: 'POST',
@@ -88,21 +82,31 @@ export const handleScoutingDataUpload = async (jsonData: unknown, mode: UploadMo
 
     // Return to UI for manual review if necessary
     if (conflictResult.conflicts.length > 0 || conflictResult.batchReview.length > 0) {
-      const batchMessage = conflictResult.batchReview.length > 0 ? ` ${conflictResult.batchReview.length} need review.` : '';
-      const conflictMessage = conflictResult.conflicts.length > 0 ? ` ${conflictResult.conflicts.length} need review.` : '';
-      
-      toast.success(`Processed ${results.added + results.replaced} entries.` + batchMessage + conflictMessage);
+      const batchMessage =
+        conflictResult.batchReview.length > 0
+          ? ` ${conflictResult.batchReview.length} need review.`
+          : '';
+      const conflictMessage =
+        conflictResult.conflicts.length > 0
+          ? ` ${conflictResult.conflicts.length} need review.`
+          : '';
+
+      toast.success(
+        `Processed ${results.added + results.replaced} entries.` + batchMessage + conflictMessage
+      );
 
       return {
         hasConflicts: conflictResult.conflicts.length > 0,
         hasBatchReview: conflictResult.batchReview.length > 0,
         batchReviewEntries: conflictResult.batchReview,
         conflicts: conflictResult.conflicts,
-        autoProcessed: results
+        autoProcessed: results,
       };
     }
 
-    toast.success(`Smart merge complete! ${results.added} new added, ${results.replaced} replaced.`);
+    toast.success(
+      `Smart merge complete! ${results.added} new added, ${results.replaced} replaced.`
+    );
     return { hasConflicts: false, autoProcessed: results };
   }
 
@@ -143,7 +147,7 @@ export const applyConflictResolutions = async (
         method: 'POST',
         body: JSON.stringify({ entries: entriesToUpsert }),
       });
-      
+
       console.log(`Successfully replaced ${replacedCount} entries in Postgres.`);
     }
 

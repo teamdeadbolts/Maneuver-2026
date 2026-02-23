@@ -98,7 +98,12 @@ function createMatch(
         },
       },
     },
-    winning_alliance: redAuto + redTeleop > blueAuto + blueTeleop ? 'red' : (blueAuto + blueTeleop > redAuto + redTeleop ? 'blue' : ''),
+    winning_alliance:
+      redAuto + redTeleop > blueAuto + blueTeleop
+        ? 'red'
+        : blueAuto + blueTeleop > redAuto + redTeleop
+          ? 'blue'
+          : '',
     time: 0,
     actual_time: 0,
     predicted_time: 0,
@@ -116,7 +121,8 @@ function offsetHubCounts(
   const redAuto = (match.score_breakdown?.red?.hubScore?.autoCount ?? 0) + offsets.red.auto;
   const redTeleop = (match.score_breakdown?.red?.hubScore?.teleopCount ?? 0) + offsets.red.teleop;
   const blueAuto = (match.score_breakdown?.blue?.hubScore?.autoCount ?? 0) + offsets.blue.auto;
-  const blueTeleop = (match.score_breakdown?.blue?.hubScore?.teleopCount ?? 0) + offsets.blue.teleop;
+  const blueTeleop =
+    (match.score_breakdown?.blue?.hubScore?.teleopCount ?? 0) + offsets.blue.teleop;
 
   return {
     ...match,
@@ -150,10 +156,12 @@ function offsetHubCounts(
 }
 
 function getAllianceObservedTotal(match: TBAMatchData, alliance: 'red' | 'blue'): number {
-  const breakdown = (match.score_breakdown as {
-    red?: { hubScore?: { totalCount?: number } };
-    blue?: { hubScore?: { totalCount?: number } };
-  } | null)?.[alliance]?.hubScore;
+  const breakdown = (
+    match.score_breakdown as {
+      red?: { hubScore?: { totalCount?: number } };
+      blue?: { hubScore?: { totalCount?: number } };
+    } | null
+  )?.[alliance]?.hubScore;
 
   return typeof breakdown?.totalCount === 'number' ? breakdown.totalCount : 0;
 }
@@ -326,7 +334,10 @@ function buildHighVarianceStressMatches(matchCount: number, keyBase: string): TB
   });
 }
 
-function getTopNTeamsByTotalOpr(result: ReturnType<typeof calculateFuelOPR>, count: number): number[] {
+function getTopNTeamsByTotalOpr(
+  result: ReturnType<typeof calculateFuelOPR>,
+  count: number
+): number[] {
   return [...result.teams]
     .sort((a, b) => b.totalFuelOPR - a.totalFuelOPR || a.teamNumber - b.teamNumber)
     .slice(0, count)
@@ -483,9 +494,18 @@ describe('calculateFuelOPR', () => {
       const expectedTeleopTotal = sumValues(expectedTeleop, alliance);
       const expectedTotal = expectedAutoTotal + expectedTeleopTotal;
 
-      const predictedAutoTotal = alliance.reduce((acc, team) => acc + (byTeam.get(team)?.autoFuelOPR ?? 0), 0);
-      const predictedTeleopTotal = alliance.reduce((acc, team) => acc + (byTeam.get(team)?.teleopFuelOPR ?? 0), 0);
-      const predictedTotal = alliance.reduce((acc, team) => acc + (byTeam.get(team)?.totalFuelOPR ?? 0), 0);
+      const predictedAutoTotal = alliance.reduce(
+        (acc, team) => acc + (byTeam.get(team)?.autoFuelOPR ?? 0),
+        0
+      );
+      const predictedTeleopTotal = alliance.reduce(
+        (acc, team) => acc + (byTeam.get(team)?.teleopFuelOPR ?? 0),
+        0
+      );
+      const predictedTotal = alliance.reduce(
+        (acc, team) => acc + (byTeam.get(team)?.totalFuelOPR ?? 0),
+        0
+      );
 
       expect(Math.abs(predictedAutoTotal - expectedAutoTotal)).toBeLessThan(0.01);
       expect(Math.abs(predictedTeleopTotal - expectedTeleopTotal)).toBeLessThan(0.01);
@@ -494,15 +514,17 @@ describe('calculateFuelOPR', () => {
 
     const tolerance = 1e-7;
     for (const row of result.teams) {
-      expect(Math.abs(row.totalFuelOPR - (row.autoFuelOPR + row.teleopFuelOPR))).toBeLessThan(tolerance);
+      expect(Math.abs(row.totalFuelOPR - (row.autoFuelOPR + row.teleopFuelOPR))).toBeLessThan(
+        tolerance
+      );
     }
 
     expect(result.fitSummary.mae.autoFuel).toBeLessThan(0.01);
     expect(result.fitSummary.mae.teleopFuel).toBeLessThan(0.01);
     expect(result.fitSummary.mae.totalFuel).toBeLessThan(0.02);
 
-    expect((byTeam.get(2)?.autoFuelOPR ?? 0)).toBeGreaterThan(byTeam.get(5)?.autoFuelOPR ?? 0);
-    expect((byTeam.get(4)?.teleopFuelOPR ?? 0)).toBeGreaterThan(byTeam.get(3)?.teleopFuelOPR ?? 0);
+    expect(byTeam.get(2)?.autoFuelOPR ?? 0).toBeGreaterThan(byTeam.get(5)?.autoFuelOPR ?? 0);
+    expect(byTeam.get(4)?.teleopFuelOPR ?? 0).toBeGreaterThan(byTeam.get(3)?.teleopFuelOPR ?? 0);
   });
 
   it('excludes playoff matches unless includePlayoffs is true', () => {
@@ -525,7 +547,14 @@ describe('calculateFuelOPR', () => {
     };
 
     const qual = createMatch('test2026_qm4', [1, 2, 3], [4, 5, 6], autoByTeam, teleopByTeam, 'qm');
-    const playoff = createMatch('test2026_sf1m1', [1, 4, 5], [2, 3, 6], autoByTeam, teleopByTeam, 'sf');
+    const playoff = createMatch(
+      'test2026_sf1m1',
+      [1, 4, 5],
+      [2, 3, 6],
+      autoByTeam,
+      teleopByTeam,
+      'sf'
+    );
 
     const withoutPlayoffs = calculateFuelOPR([qual, playoff], {
       ridgeLambda: 0.75,
@@ -603,17 +632,28 @@ describe('calculateFuelOPR', () => {
       const expectedTeleopTotal = sumValues(expectedTeleop, alliance);
       const expectedTotal = expectedAutoTotal + expectedTeleopTotal;
 
-      const predictedAutoTotal = alliance.reduce((acc, team) => acc + (byTeam.get(team)?.autoFuelOPR ?? 0), 0);
-      const predictedTeleopTotal = alliance.reduce((acc, team) => acc + (byTeam.get(team)?.teleopFuelOPR ?? 0), 0);
-      const predictedTotal = alliance.reduce((acc, team) => acc + (byTeam.get(team)?.totalFuelOPR ?? 0), 0);
+      const predictedAutoTotal = alliance.reduce(
+        (acc, team) => acc + (byTeam.get(team)?.autoFuelOPR ?? 0),
+        0
+      );
+      const predictedTeleopTotal = alliance.reduce(
+        (acc, team) => acc + (byTeam.get(team)?.teleopFuelOPR ?? 0),
+        0
+      );
+      const predictedTotal = alliance.reduce(
+        (acc, team) => acc + (byTeam.get(team)?.totalFuelOPR ?? 0),
+        0
+      );
 
       expect(Math.abs(predictedAutoTotal - expectedAutoTotal)).toBeLessThan(0.05);
       expect(Math.abs(predictedTeleopTotal - expectedTeleopTotal)).toBeLessThan(0.05);
       expect(Math.abs(predictedTotal - expectedTotal)).toBeLessThan(0.1);
     }
 
-    expect((byTeam.get(101)?.totalFuelOPR ?? 0)).toBeGreaterThan(byTeam.get(106)?.totalFuelOPR ?? 0);
-    expect((byTeam.get(102)?.teleopFuelOPR ?? 0)).toBeGreaterThan(byTeam.get(105)?.teleopFuelOPR ?? 0);
+    expect(byTeam.get(101)?.totalFuelOPR ?? 0).toBeGreaterThan(byTeam.get(106)?.totalFuelOPR ?? 0);
+    expect(byTeam.get(102)?.teleopFuelOPR ?? 0).toBeGreaterThan(
+      byTeam.get(105)?.teleopFuelOPR ?? 0
+    );
 
     expect(result.fitSummary.mae.autoFuel).toBeLessThan(0.05);
     expect(result.fitSummary.mae.teleopFuel).toBeLessThan(0.05);
@@ -648,11 +688,26 @@ describe('calculateFuelOPR', () => {
     ];
 
     const noisyMatches = [
-      offsetHubCounts(baseMatches[0], { red: { auto: 1, teleop: -3 }, blue: { auto: -1, teleop: 4 } }),
-      offsetHubCounts(baseMatches[1], { red: { auto: -2, teleop: 5 }, blue: { auto: 1, teleop: -4 } }),
-      offsetHubCounts(baseMatches[2], { red: { auto: 2, teleop: -2 }, blue: { auto: -1, teleop: 3 } }),
-      offsetHubCounts(baseMatches[3], { red: { auto: -1, teleop: 4 }, blue: { auto: 2, teleop: -3 } }),
-      offsetHubCounts(baseMatches[4], { red: { auto: 1, teleop: 3 }, blue: { auto: -2, teleop: -2 } }),
+      offsetHubCounts(baseMatches[0], {
+        red: { auto: 1, teleop: -3 },
+        blue: { auto: -1, teleop: 4 },
+      }),
+      offsetHubCounts(baseMatches[1], {
+        red: { auto: -2, teleop: 5 },
+        blue: { auto: 1, teleop: -4 },
+      }),
+      offsetHubCounts(baseMatches[2], {
+        red: { auto: 2, teleop: -2 },
+        blue: { auto: -1, teleop: 3 },
+      }),
+      offsetHubCounts(baseMatches[3], {
+        red: { auto: -1, teleop: 4 },
+        blue: { auto: 2, teleop: -3 },
+      }),
+      offsetHubCounts(baseMatches[4], {
+        red: { auto: 1, teleop: 3 },
+        blue: { auto: -2, teleop: -2 },
+      }),
     ];
 
     const result = calculateFuelOPR(noisyMatches, {
@@ -674,8 +729,10 @@ describe('calculateFuelOPR', () => {
     expect(result.fitSummary.mae.totalFuel).toBeLessThan(30);
 
     const byTeam = new Map(result.teams.map(row => [row.teamNumber, row]));
-    expect((byTeam.get(101)?.totalFuelOPR ?? 0)).toBeGreaterThan(byTeam.get(106)?.totalFuelOPR ?? 0);
-    expect((byTeam.get(102)?.teleopFuelOPR ?? 0)).toBeGreaterThan(byTeam.get(105)?.teleopFuelOPR ?? 0);
+    expect(byTeam.get(101)?.totalFuelOPR ?? 0).toBeGreaterThan(byTeam.get(106)?.totalFuelOPR ?? 0);
+    expect(byTeam.get(102)?.teleopFuelOPR ?? 0).toBeGreaterThan(
+      byTeam.get(105)?.teleopFuelOPR ?? 0
+    );
   });
 
   it('sweeps lambda and finds lower holdout error than strong regularization', () => {
@@ -709,14 +766,38 @@ describe('calculateFuelOPR', () => {
     ];
 
     const noisyMatches = [
-      offsetHubCounts(baseMatches[0], { red: { auto: 1, teleop: -3 }, blue: { auto: -1, teleop: 4 } }),
-      offsetHubCounts(baseMatches[1], { red: { auto: -2, teleop: 5 }, blue: { auto: 1, teleop: -4 } }),
-      offsetHubCounts(baseMatches[2], { red: { auto: 2, teleop: -2 }, blue: { auto: -1, teleop: 3 } }),
-      offsetHubCounts(baseMatches[3], { red: { auto: -1, teleop: 4 }, blue: { auto: 2, teleop: -3 } }),
-      offsetHubCounts(baseMatches[4], { red: { auto: 1, teleop: 3 }, blue: { auto: -2, teleop: -2 } }),
-      offsetHubCounts(baseMatches[5], { red: { auto: 0, teleop: -5 }, blue: { auto: 1, teleop: 6 } }),
-      offsetHubCounts(baseMatches[6], { red: { auto: -1, teleop: 2 }, blue: { auto: 2, teleop: -1 } }),
-      offsetHubCounts(baseMatches[7], { red: { auto: 2, teleop: -4 }, blue: { auto: -1, teleop: 3 } }),
+      offsetHubCounts(baseMatches[0], {
+        red: { auto: 1, teleop: -3 },
+        blue: { auto: -1, teleop: 4 },
+      }),
+      offsetHubCounts(baseMatches[1], {
+        red: { auto: -2, teleop: 5 },
+        blue: { auto: 1, teleop: -4 },
+      }),
+      offsetHubCounts(baseMatches[2], {
+        red: { auto: 2, teleop: -2 },
+        blue: { auto: -1, teleop: 3 },
+      }),
+      offsetHubCounts(baseMatches[3], {
+        red: { auto: -1, teleop: 4 },
+        blue: { auto: 2, teleop: -3 },
+      }),
+      offsetHubCounts(baseMatches[4], {
+        red: { auto: 1, teleop: 3 },
+        blue: { auto: -2, teleop: -2 },
+      }),
+      offsetHubCounts(baseMatches[5], {
+        red: { auto: 0, teleop: -5 },
+        blue: { auto: 1, teleop: 6 },
+      }),
+      offsetHubCounts(baseMatches[6], {
+        red: { auto: -1, teleop: 2 },
+        blue: { auto: 2, teleop: -1 },
+      }),
+      offsetHubCounts(baseMatches[7], {
+        red: { auto: 2, teleop: -4 },
+        blue: { auto: -1, teleop: 3 },
+      }),
     ];
 
     const trainMatches = noisyMatches.slice(0, 6);
@@ -751,7 +832,9 @@ describe('calculateFuelOPR', () => {
 
     const atStrongRegularization = sweep.find(row => row.lambda === 0.75);
     expect(atStrongRegularization).toBeDefined();
-    expect(best.holdoutRmse).toBeLessThan((atStrongRegularization?.holdoutRmse ?? Number.POSITIVE_INFINITY));
+    expect(best.holdoutRmse).toBeLessThan(
+      atStrongRegularization?.holdoutRmse ?? Number.POSITIVE_INFINITY
+    );
     expect(best.lambda).toBeLessThan(0.75);
   });
 
@@ -842,7 +925,9 @@ describe('calculateFuelOPR', () => {
 
     expect(atStrongRegularization).toBeDefined();
     expect(bestRow).toBeDefined();
-    expect((bestRow?.holdoutRmse ?? Number.POSITIVE_INFINITY)).toBeLessThan(atStrongRegularization?.holdoutRmse ?? 0);
+    expect(bestRow?.holdoutRmse ?? Number.POSITIVE_INFINITY).toBeLessThan(
+      atStrongRegularization?.holdoutRmse ?? 0
+    );
   });
 
   it('handles high-variance alliances and outlier scouting with stable rankings', () => {
@@ -897,7 +982,7 @@ describe('calculateFuelOPR', () => {
     const heavyLambda = rows.find(row => row.lambda === 0.75);
     expect(lowLambda).toBeDefined();
     expect(heavyLambda).toBeDefined();
-    expect((best.holdoutRmse)).toBeLessThan((heavyLambda?.holdoutRmse ?? Number.POSITIVE_INFINITY));
+    expect(best.holdoutRmse).toBeLessThan(heavyLambda?.holdoutRmse ?? Number.POSITIVE_INFINITY);
   });
 
   it('simulates a hybrid lambda timeline across event progression', () => {

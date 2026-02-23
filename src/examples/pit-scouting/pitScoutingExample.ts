@@ -1,9 +1,9 @@
 /**
  * EXAMPLE: Game-Specific Pit Scouting Implementation
- * 
+ *
  * This is an example of how to implement game-specific pit scouting questions
  * for your FRC game. Copy this pattern to your game implementation repository.
- * 
+ *
  * FILE STRUCTURE:
  * src/game/
  * ├── pitScoutingRules.ts              (Define your questions)
@@ -25,9 +25,9 @@ export const examplePitScoutingRules: PitScoutingRules = {
       label: 'Can pick up game pieces from ground?',
       type: 'boolean',
       required: false,
-      helperText: 'Does the robot have ground pickup capabilities?'
+      helperText: 'Does the robot have ground pickup capabilities?',
     },
-    
+
     // Number question example
     {
       id: 'maxAutoPieces',
@@ -35,9 +35,9 @@ export const examplePitScoutingRules: PitScoutingRules = {
       type: 'number',
       placeholder: 'e.g., 3',
       required: false,
-      helperText: 'As reported by the team'
+      helperText: 'As reported by the team',
     },
-    
+
     // Select question example
     {
       id: 'preferredStartPosition',
@@ -45,27 +45,27 @@ export const examplePitScoutingRules: PitScoutingRules = {
       type: 'select',
       options: ['Left', 'Center', 'Right', 'Flexible'],
       required: true,
-      helperText: 'Where does the team prefer to start?'
+      helperText: 'Where does the team prefer to start?',
     },
-    
+
     // Text question example
     {
       id: 'specialCapabilities',
       label: 'Special capabilities or notes',
       type: 'text',
       placeholder: 'Any unique features...',
-      required: false
+      required: false,
     },
-    
+
     // Multi-select question example (teams need to implement UI for this)
     {
       id: 'scoringZones',
       label: 'Which scoring zones can they reach?',
       type: 'multiselect',
       options: ['Zone A', 'Zone B', 'Zone C', 'Zone D'],
-      required: false
-    }
-  ]
+      required: false,
+    },
+  ],
 };
 
 // =============================================================================

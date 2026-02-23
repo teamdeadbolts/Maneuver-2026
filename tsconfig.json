@@ -39,9 +39,10 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/core/*": ["./src/core/*"],
-      "@/game/*": ["./src/game-template/*"]
+      "@/game/*": ["./src/game-template/*"],
+      "@/shared/*": [ "./shared/*" ]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "shared/types/scouting-entry.ts", "shared/core/types/pit-scouting.ts"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts", "**/*.test.ts"]
 }

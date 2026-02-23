@@ -1,13 +1,13 @@
 /**
  * Match Selector Component
- * 
+ *
  * Year-agnostic component for verifying match predictions and awarding stakes.
  * This component:
  * - Displays TBA match results (red vs blue winners)
  * - Compares scout predictions to actual outcomes
  * - Awards stakes/points for correct predictions
  * - Tracks prediction streaks
- * 
+ *
  * This is NOT game-specific - it only cares about alliance winners,
  * not about game pieces or scoring details.
  */
@@ -29,19 +29,18 @@ import {
 
 interface MatchSelectorProps {
   matches: TBAMatch[];
-  onProcessingComplete: (results: Array<{
-    matchNumber: number;
-    winner: string;
-    predictionsCount: number;
-    correctPredictions: number;
-    stakesAwarded: number;
-  }>) => void;
+  onProcessingComplete: (
+    results: Array<{
+      matchNumber: number;
+      winner: string;
+      predictionsCount: number;
+      correctPredictions: number;
+      stakesAwarded: number;
+    }>
+  ) => void;
 }
 
-export const MatchSelector: React.FC<MatchSelectorProps> = ({
-  matches,
-  onProcessingComplete
-}) => {
+export const MatchSelector: React.FC<MatchSelectorProps> = ({ matches, onProcessingComplete }) => {
   const [selectedMatches, setSelectedMatches] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
 
@@ -124,12 +123,14 @@ export const MatchSelector: React.FC<MatchSelectorProps> = ({
           winner: matchResult.winner,
           predictionsCount: unverifiedPredictions.length,
           correctPredictions,
-          stakesAwarded: totalStakesAwarded
+          stakesAwarded: totalStakesAwarded,
         });
 
         // Log information about skipped predictions if any
         if (skippedVerified > 0) {
-          console.log(`Match ${match.match_number}: Skipped ${skippedVerified} already verified predictions`);
+          console.log(
+            `Match ${match.match_number}: Skipped ${skippedVerified} already verified predictions`
+          );
         }
       }
 
@@ -140,7 +141,9 @@ export const MatchSelector: React.FC<MatchSelectorProps> = ({
       const totalStakes = results.reduce((sum, r) => sum + r.stakesAwarded, 0);
 
       if (totalPredictions === 0) {
-        toast.info(`Processed ${selectedMatches.size} matches: All predictions were already verified. No new stakes awarded.`);
+        toast.info(
+          `Processed ${selectedMatches.size} matches: All predictions were already verified. No new stakes awarded.`
+        );
       } else {
         toast.success(
           `Processed ${selectedMatches.size} matches: ${totalCorrect}/${totalPredictions} correct predictions, ${totalStakes} stakes awarded`
@@ -149,7 +152,6 @@ export const MatchSelector: React.FC<MatchSelectorProps> = ({
 
       // Clear selection after processing
       setSelectedMatches(new Set());
-
     } catch (error) {
       console.error('Error processing predictions:', error);
       toast.error('Failed to process predictions. Please try again.');
@@ -177,10 +179,20 @@ export const MatchSelector: React.FC<MatchSelectorProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap gap-2 sm:gap-3 justify-center sm:justify-end">
-            <Button variant="outline" size="sm" onClick={selectAllMatches} className="px-4 flex-1 sm:flex-none">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={selectAllMatches}
+              className="px-4 flex-1 sm:flex-none"
+            >
               Select All
             </Button>
-            <Button variant="outline" size="sm" onClick={clearSelection} className="px-4 flex-1 sm:flex-none">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={clearSelection}
+              className="px-4 flex-1 sm:flex-none"
+            >
               Clear
             </Button>
             <Button
@@ -202,18 +214,19 @@ export const MatchSelector: React.FC<MatchSelectorProps> = ({
       </CardHeader>
       <CardContent className="p-6">
         <div className="space-y-3 max-h-96 overflow-y-auto">
-          {matches.map((match) => {
+          {matches.map(match => {
             const result = getMatchResult(match);
             const isSelected = selectedMatches.has(match.key);
 
             return (
               <div
                 key={match.key}
-                className={`p-4 border rounded-lg cursor-pointer transition-colors ${isSelected
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
-                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
-                  }`}
-                onClick={(e) => {
+                className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                    : 'border-gray-200 hover:border-gray-300 dark:border-gray-700'
+                }`}
+                onClick={e => {
                   // Don't trigger if the click came from the checkbox itself
                   if ((e.target as HTMLElement).closest('[role="checkbox"]')) {
                     return;
@@ -245,7 +258,11 @@ export const MatchSelector: React.FC<MatchSelectorProps> = ({
                             className={`${result.winner === 'red' ? 'bg-red-500' : 'bg-blue-500'} text-white`}
                           >
                             <Trophy className="h-3 w-3 mr-1" />
-                            {result.winner === 'red' ? 'Red' : result.winner === 'blue' ? 'Blue' : 'Tie'}
+                            {result.winner === 'red'
+                              ? 'Red'
+                              : result.winner === 'blue'
+                                ? 'Blue'
+                                : 'Tie'}
                           </Badge>
                           <span className="text-sm text-gray-600 dark:text-gray-400">
                             {result.redScore} - {result.blueScore}

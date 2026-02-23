@@ -27,12 +27,18 @@ export function WebRTCPushedDataDialog() {
 
   const getDataTypeLabel = (dataType: string | null) => {
     switch (dataType) {
-      case 'scouting': return 'Scouting Data';
-      case 'pit-scouting': return 'Pit Scouting Data';
-      case 'match': return 'Match Schedule';
-      case 'scout': return 'Scout Profiles';
-      case 'combined': return 'Combined Data';
-      default: return 'Data';
+      case 'scouting':
+        return 'Scouting Data';
+      case 'pit-scouting':
+        return 'Pit Scouting Data';
+      case 'match':
+        return 'Match Schedule';
+      case 'scout':
+        return 'Scout Profiles';
+      case 'combined':
+        return 'Combined Data';
+      default:
+        return 'Data';
     }
   };
 
@@ -47,7 +53,8 @@ export function WebRTCPushedDataDialog() {
         // Combined data structure (scouting + scout profiles)
         if (data.entries) parts.push(`${data.entries.length} scouting entries`);
         if (data.scoutProfiles?.scouts) parts.push(`${data.scoutProfiles.scouts.length} scouts`);
-        if (data.scoutProfiles?.predictions) parts.push(`${data.scoutProfiles.predictions.length} predictions`);
+        if (data.scoutProfiles?.predictions)
+          parts.push(`${data.scoutProfiles.predictions.length} predictions`);
       } else if (pushedDataType === 'scouting' || pushedDataType === 'pit-scouting') {
         // Scouting or pit data - wrapped format with entries
         if (data.entries && Array.isArray(data.entries)) {
@@ -55,11 +62,16 @@ export function WebRTCPushedDataDialog() {
         }
       } else if (pushedDataType === 'match') {
         // Match data
-        if (data.matches) parts.push(`${Array.isArray(data.matches) ? data.matches.length : 0} matches`);
+        if (data.matches)
+          parts.push(`${Array.isArray(data.matches) ? data.matches.length : 0} matches`);
       } else if (pushedDataType === 'scout') {
         // Scout profile data
-        if (data.scouts) parts.push(`${Array.isArray(data.scouts) ? data.scouts.length : 0} scouts`);
-        if (data.predictions) parts.push(`${Array.isArray(data.predictions) ? data.predictions.length : 0} predictions`);
+        if (data.scouts)
+          parts.push(`${Array.isArray(data.scouts) ? data.scouts.length : 0} scouts`);
+        if (data.predictions)
+          parts.push(
+            `${Array.isArray(data.predictions) ? data.predictions.length : 0} predictions`
+          );
       }
 
       return parts.length > 0 ? parts.join(', ') : 'Unknown data structure';
@@ -85,7 +97,7 @@ export function WebRTCPushedDataDialog() {
           hasEntries: !!data.entries,
           entriesIsArray: Array.isArray(data.entries),
           entriesLength: data.entries?.length,
-          hasScoutProfiles: !!data.scoutProfiles
+          hasScoutProfiles: !!data.scoutProfiles,
         });
 
         // Import scouting data
@@ -115,7 +127,6 @@ export function WebRTCPushedDataDialog() {
             console.log('✅ Imported', data.scoutProfiles.predictions.length, 'predictions');
           }
         }
-
       } else if (pushedDataType === 'scouting') {
         // Import scouting data - wrapped format with entries
         const data = pushedData as { entries?: any[]; version?: string; exportedAt?: number };
@@ -139,11 +150,15 @@ export function WebRTCPushedDataDialog() {
               throw new Error(`Entry at index ${i} is null or undefined`);
             }
             if (!entry.id) {
-              throw new Error(`Entry at index ${i} missing id: ${JSON.stringify(entry).substring(0, 100)}`);
+              throw new Error(
+                `Entry at index ${i} missing id: ${JSON.stringify(entry).substring(0, 100)}`
+              );
             }
             // maneuver-core uses gameData, not data
             if (!entry.gameData) {
-              throw new Error(`Entry at index ${i} missing gameData property: ${JSON.stringify(entry).substring(0, 100)}`);
+              throw new Error(
+                `Entry at index ${i} missing gameData property: ${JSON.stringify(entry).substring(0, 100)}`
+              );
             }
           }
 
@@ -151,7 +166,6 @@ export function WebRTCPushedDataDialog() {
           importedCount = entries.length;
           console.log('✅ Imported', importedCount, 'scouting entries');
         }
-
       } else if (pushedDataType === 'pit-scouting') {
         // Import pit scouting data - wrapped format with entries
         const data = pushedData as { entries?: any[]; version?: string; exportedAt?: number };
@@ -165,7 +179,6 @@ export function WebRTCPushedDataDialog() {
           importedCount = entries.length;
           console.log('✅ Imported', importedCount, 'pit scouting entries');
         }
-
       } else if (pushedDataType === 'match') {
         // Import match data
         const data = pushedData as any;
@@ -174,7 +187,6 @@ export function WebRTCPushedDataDialog() {
           importedCount = data.matches.length;
           console.log('✅ Imported', importedCount, 'matches');
         }
-
       } else if (pushedDataType === 'scout') {
         // Import scout profile data
         const data = pushedData as any;
@@ -224,7 +236,7 @@ export function WebRTCPushedDataDialog() {
     // Send decline message to lead
     sendControlMessage({
       type: 'push-declined',
-      dataType: pushedDataType
+      dataType: pushedDataType,
     });
 
     toast.info('Declined data from lead');
@@ -251,21 +263,24 @@ export function WebRTCPushedDataDialog() {
                     <p className="font-medium text-blue-900 dark:text-blue-100">
                       {getDataTypeLabel(pushedDataType)}
                     </p>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      {getDataSummary()}
-                    </p>
+                    <p className="text-sm text-blue-700 dark:text-blue-300">{getDataSummary()}</p>
                   </div>
                 </div>
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Accepting will merge this data with your existing data. Any conflicts will use the newest data.
+                Accepting will merge this data with your existing data. Any conflicts will use the
+                newest data.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleDecline} className='p-2'>Decline</AlertDialogCancel>
-            <AlertDialogAction onClick={handleAcceptPushedData} className='p-2'>Accept & Import</AlertDialogAction>
+            <AlertDialogCancel onClick={handleDecline} className="p-2">
+              Decline
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleAcceptPushedData} className="p-2">
+              Accept & Import
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -279,9 +294,7 @@ export function WebRTCPushedDataDialog() {
               Importing Data
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <div className="text-center py-2 text-lg">
-                {importStatus}
-              </div>
+              <div className="text-center py-2 text-lg">{importStatus}</div>
             </AlertDialogDescription>
           </AlertDialogHeader>
         </AlertDialogContent>

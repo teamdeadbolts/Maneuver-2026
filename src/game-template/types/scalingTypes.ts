@@ -1,11 +1,11 @@
 /**
  * 2026 Game-Specific: Match Validation Scaling Types
- * 
+ *
  * These types extend the core validation system with 2026-specific
  * fuel scaling functionality.
  */
 
-import { ScoutingEntryBase } from '@/core/types/scouting-entry';
+import type { ScoutingEntryBase } from '@/shared/types/scouting-entry';
 
 /**
  * 2026 Game-Specific Extension: Scaled fuel data
@@ -31,7 +31,7 @@ export interface ScoutingEntry2026WithScaling extends ScoutingEntryBase {
  * Scaling factors calculated from TBA vs scouted totals
  */
 export interface ScalingFactors {
-  autoFuel: number;   // officialAutoTotal / scoutedAutoTotal
+  autoFuel: number; // officialAutoTotal / scoutedAutoTotal
   teleopFuel: number; // officialTeleopTotal / scoutedTeleopTotal
 }
 
@@ -47,7 +47,7 @@ export interface ScaledTeamMetrics {
   // Scaled values
   scaledAutoFuel: number;
   scaledTeleopFuel: number;
-  officialTowerLevel: number;  // From TBA
+  officialTowerLevel: number; // From TBA
   // Metadata
   scalingApplied: boolean;
   scalingFactors: ScalingFactors;

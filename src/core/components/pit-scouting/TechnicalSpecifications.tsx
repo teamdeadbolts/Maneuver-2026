@@ -1,15 +1,15 @@
-import { Label } from "@/core/components/ui/label";
-import { Input } from "@/core/components/ui/input";
+import { Label } from '@/core/components/ui/label';
+import { Input } from '@/core/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/core/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Settings, Weight, Car, Code } from "lucide-react";
-import type { DrivetrainType, ProgrammingLanguage } from "@/types/database";
+} from '@/core/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { Settings, Weight, Car, Code } from 'lucide-react';
+import type { DrivetrainType, ProgrammingLanguage } from '@/types/database';
 
 interface TechnicalSpecificationsProps {
   weight?: number;
@@ -30,7 +30,7 @@ export function TechnicalSpecifications({
 }: TechnicalSpecificationsProps) {
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    if (value === "") {
+    if (value === '') {
       onWeightChange(undefined);
     } else {
       const numValue = parseFloat(value);
@@ -59,7 +59,7 @@ export function TechnicalSpecifications({
             id="weight"
             type="number"
             placeholder="e.g., 125"
-            value={weight ?? ""}
+            value={weight ?? ''}
             onChange={handleWeightChange}
             min="0"
             step="0.1"
@@ -77,9 +77,9 @@ export function TechnicalSpecifications({
             Drivetrain Type
           </Label>
           <Select
-            value={drivetrain ?? "unspecified"}
-            onValueChange={(value) =>
-              onDrivetrainChange(value === "unspecified" ? undefined : (value as DrivetrainType))
+            value={drivetrain ?? 'unspecified'}
+            onValueChange={value =>
+              onDrivetrainChange(value === 'unspecified' ? undefined : (value as DrivetrainType))
             }
           >
             <SelectTrigger id="drivetrain" className="text-lg">
@@ -105,9 +105,11 @@ export function TechnicalSpecifications({
             Programming Language
           </Label>
           <Select
-            value={programmingLanguage ?? "unspecified"}
-            onValueChange={(value) =>
-              onProgrammingLanguageChange(value === "unspecified" ? undefined : (value as ProgrammingLanguage))
+            value={programmingLanguage ?? 'unspecified'}
+            onValueChange={value =>
+              onProgrammingLanguageChange(
+                value === 'unspecified' ? undefined : (value as ProgrammingLanguage)
+              )
             }
           >
             <SelectTrigger id="programmingLanguage" className="text-lg">

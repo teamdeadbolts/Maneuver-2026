@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
-import { useDataStats } from "@/core/hooks/useDataStats";
-import { useDataCleaning } from "@/core/hooks/useDataCleaning";
-import { DeviceInfoCard } from "@/core/components/data-management/ClearComponents/DeviceInfoCard";
-import { BackupRecommendationAlert } from "@/core/components/data-management/ClearComponents/BackupRecommendationAlert";
-import { ClearAllDataDialog } from "@/core/components/data-management/ClearComponents/ClearAllDataDialog";
-import { DataClearCard } from "@/core/components/data-management/ClearComponents/DataClearCard";
-
+import { useState, useEffect } from 'react';
+import { useDataStats } from '@/core/hooks/useDataStats';
+import { useDataCleaning } from '@/core/hooks/useDataCleaning';
+import { DeviceInfoCard } from '@/core/components/data-management/ClearComponents/DeviceInfoCard';
+import { BackupRecommendationAlert } from '@/core/components/data-management/ClearComponents/BackupRecommendationAlert';
+import { ClearAllDataDialog } from '@/core/components/data-management/ClearComponents/ClearAllDataDialog';
+import { DataClearCard } from '@/core/components/data-management/ClearComponents/DataClearCard';
 
 const ClearDataPage = () => {
-  const [playerStation, setPlayerStation] = useState("");
+  const [playerStation, setPlayerStation] = useState('');
   const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
 
   const { stats, refreshData, resetStats, updateMatchData } = useDataStats();
@@ -22,7 +21,7 @@ const ClearDataPage = () => {
   } = useDataCleaning(refreshData, resetStats, updateMatchData);
 
   useEffect(() => {
-    const station = localStorage.getItem("playerStation") || "Unknown";
+    const station = localStorage.getItem('playerStation') || 'Unknown';
     setPlayerStation(station);
   }, []);
 
@@ -40,9 +39,7 @@ const ClearDataPage = () => {
         {/* Top Row - Device Info and Alert */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <DeviceInfoCard playerStation={playerStation} />
-          <BackupRecommendationAlert
-            onClearAllClick={() => setShowClearAllConfirm(true)}
-          />
+          <BackupRecommendationAlert onClearAllClick={() => setShowClearAllConfirm(true)} />
         </div>
 
         {/* Data Clear Cards Grid */}

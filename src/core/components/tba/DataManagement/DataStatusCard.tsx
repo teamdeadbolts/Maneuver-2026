@@ -1,8 +1,22 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Badge } from "@/core/components/ui/badge";
-import { CheckCircle, XCircle, Database, Calendar, Users, MapPin, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { getStoredPitAddresses, getStoredPitData, getStoredNexusTeams, getAllStoredEventTeams } from '@/core/lib/tba';
+import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { Badge } from '@/core/components/ui/badge';
+import {
+  CheckCircle,
+  XCircle,
+  Database,
+  Calendar,
+  Users,
+  MapPin,
+  AlertTriangle,
+  ShieldCheck,
+} from 'lucide-react';
+import {
+  getStoredPitAddresses,
+  getStoredPitData,
+  getStoredNexusTeams,
+  getAllStoredEventTeams,
+} from '@/core/lib/tba';
 import { getCachedTBAEventMatches, getCacheExpiration } from '@/core/lib/tbaCache';
 import { gamificationDB as gameDB } from '@/game-template/gamification';
 
@@ -18,9 +32,7 @@ interface StatusItem {
   icon: React.ElementType;
 }
 
-export const DataStatusCard: React.FC<DataStatusCardProps> = ({
-  eventKey
-}) => {
+export const DataStatusCard: React.FC<DataStatusCardProps> = ({ eventKey }) => {
   const [validationData, setValidationData] = React.useState<{
     count: number;
     isExpired: boolean;
@@ -45,7 +57,7 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
 
         setValidationData({
           count: matches.length,
-          isExpired: expiration.isExpired
+          isExpired: expiration.isExpired,
         });
       } catch (error) {
         console.error('Error checking validation data:', error);
@@ -77,7 +89,7 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
 
         setVerifiedPredictions({
           count: allPredictions.length,
-          matchCount: uniqueMatches.size
+          matchCount: uniqueMatches.size,
         });
       } catch (error) {
         console.error('Error checking verified predictions:', error);
@@ -108,7 +120,8 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
   }
 
   // Check various data sources
-  const hasMatchData = localStorage.getItem('matchData') !== null && localStorage.getItem('matchData') !== '';
+  const hasMatchData =
+    localStorage.getItem('matchData') !== null && localStorage.getItem('matchData') !== '';
 
   // Use verified predictions from database instead of localStorage
   const hasVerifiedPredictions = verifiedPredictions.count > 0;
@@ -117,7 +130,7 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
   // Check TBA teams
   const tbaTeams = getAllStoredEventTeams();
   const hasTBATeams = tbaTeams[eventKey] && tbaTeams[eventKey].length > 0;
-  const tbaTeamCount = hasTBATeams ? (tbaTeams[eventKey]?.length || 0) : 0;
+  const tbaTeamCount = hasTBATeams ? tbaTeams[eventKey]?.length || 0 : 0;
 
   // Check Nexus teams
   const nexusTeams = getStoredNexusTeams(eventKey);
@@ -178,15 +191,15 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
     {
       label: 'Match Schedule',
       status: hasMatchData ? 'loaded' : 'empty',
-      count: hasMatchData ? (JSON.parse(localStorage.getItem('matchData') || '[]')).length : 0,
-      icon: Calendar
+      count: hasMatchData ? JSON.parse(localStorage.getItem('matchData') || '[]').length : 0,
+      icon: Calendar,
     },
     {
       label: 'Match Validation Data',
       status: validationStatus,
       count: validationData?.count || 0,
       details: validationDetails,
-      icon: ShieldCheck
+      icon: ShieldCheck,
     },
     {
       label: 'Prediction Processing',
@@ -195,45 +208,54 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
       details: hasVerifiedPredictions
         ? `${verifiedPredictions.count} predictions verified across ${verifiedMatchCount} matches`
         : 'No predictions processed yet',
-      icon: CheckCircle
+      icon: CheckCircle,
     },
     {
       label: 'Event Teams',
       status: teamStatus,
       count: teamCount,
       details: teamDetails,
-      icon: Users
+      icon: Users,
     },
     {
       label: 'Pit Data',
       status: pitStatus,
       count: pitAddressCount,
       details: pitDetails,
-      icon: MapPin
-    }
+      icon: MapPin,
+    },
   ];
 
   const getStatusColor = (status: StatusItem['status']) => {
     switch (status) {
-      case 'loaded': return 'bg-green-100 text-green-800 border-green-200';
-      case 'partial': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'empty': return 'bg-gray-100 text-gray-600 border-gray-200';
+      case 'loaded':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'partial':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'empty':
+        return 'bg-gray-100 text-gray-600 border-gray-200';
     }
   };
 
   const getStatusText = (status: StatusItem['status']) => {
     switch (status) {
-      case 'loaded': return 'Loaded';
-      case 'partial': return 'Partial';
-      case 'empty': return 'Not Loaded';
+      case 'loaded':
+        return 'Loaded';
+      case 'partial':
+        return 'Partial';
+      case 'empty':
+        return 'Not Loaded';
     }
   };
 
   const getStatusIcon = (status: StatusItem['status']) => {
     switch (status) {
-      case 'loaded': return CheckCircle;
-      case 'partial': return AlertTriangle;
-      case 'empty': return XCircle;
+      case 'loaded':
+        return CheckCircle;
+      case 'partial':
+        return AlertTriangle;
+      case 'empty':
+        return XCircle;
     }
   };
 
@@ -256,19 +278,30 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
         {/* Overall Status Summary */}
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Overall:</span>
-          <Badge className={getStatusColor(loadedCount === totalItems ? 'loaded' : loadedCount > 0 || partialCount > 0 ? 'partial' : 'empty')}>
+          <Badge
+            className={getStatusColor(
+              loadedCount === totalItems
+                ? 'loaded'
+                : loadedCount > 0 || partialCount > 0
+                  ? 'partial'
+                  : 'empty'
+            )}
+          >
             {loadedCount}/{totalItems} Data Types Loaded
           </Badge>
         </div>
 
         {/* Individual Status Items */}
         <div className="space-y-3">
-          {statusItems.map((item) => {
+          {statusItems.map(item => {
             const StatusIcon = getStatusIcon(item.status);
             const ItemIcon = item.icon;
 
             return (
-              <div key={item.label} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+              <div
+                key={item.label}
+                className="flex items-center justify-between p-3 rounded-lg border bg-card"
+              >
                 <div className="flex items-center gap-3">
                   <ItemIcon className="h-4 w-4 text-muted-foreground" />
                   <div className="flex flex-col">
@@ -285,14 +318,24 @@ export const DataStatusCard: React.FC<DataStatusCardProps> = ({
                     </Badge>
                   )}
                   <div className="flex items-center gap-1">
-                    <StatusIcon className={`h-4 w-4 ${item.status === 'loaded' ? 'text-green-600' :
-                      item.status === 'partial' ? 'text-yellow-600' :
-                        'text-gray-400'
-                      }`} />
-                    <span className={`text-xs font-medium ${item.status === 'loaded' ? 'text-green-600' :
-                      item.status === 'partial' ? 'text-yellow-600' :
-                        'text-gray-400'
-                      }`}>
+                    <StatusIcon
+                      className={`h-4 w-4 ${
+                        item.status === 'loaded'
+                          ? 'text-green-600'
+                          : item.status === 'partial'
+                            ? 'text-yellow-600'
+                            : 'text-gray-400'
+                      }`}
+                    />
+                    <span
+                      className={`text-xs font-medium ${
+                        item.status === 'loaded'
+                          ? 'text-green-600'
+                          : item.status === 'partial'
+                            ? 'text-yellow-600'
+                            : 'text-gray-400'
+                      }`}
+                    >
                       {getStatusText(item.status)}
                     </span>
                   </div>

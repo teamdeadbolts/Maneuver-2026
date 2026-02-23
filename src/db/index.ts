@@ -4,8 +4,7 @@
  */
 
 // Database instances and classes
-export {
-} from '../core/db/database';
+export {} from '../core/db/database';
 
 // Scouting data operations
 export {
@@ -23,16 +22,10 @@ export {
 } from '../core/db/database';
 
 // Database statistics
-export {
-  getDBStats,
-  queryScoutingEntries,
-} from '../core/db/database';
+export { getDBStats, queryScoutingEntries } from '../core/db/database';
 
 // Import/export
-export {
-  exportScoutingData,
-  importScoutingData,
-} from '../core/db/database';
+export { exportScoutingData, importScoutingData } from '../core/db/database';
 
 // Pit scouting operations
 export {
@@ -84,7 +77,4 @@ export {
   saveScoutingData,
 } from '../core/db/dataUtils';
 
-export type {
-  ConflictResolution,
-  ConflictResult,
-} from '../core/db/dataUtils';
+export type { ConflictResolution, ConflictResult } from '../core/db/dataUtils';

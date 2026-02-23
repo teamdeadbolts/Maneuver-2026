@@ -1,15 +1,14 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
-COPY server/package*.json ./
-COPY server/prisma ./prisma/
+COPY . .
 
+WORKDIR /app/server
 RUN npm install
-COPY server/ .
 
 RUN npx prisma generate
 RUN npm run build
 
 EXPOSE 3000
-CMD npx prisma migrate deploy && node dist/index.js
+CMD npx prisma migrate deploy && npm start

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Button } from "@/core/components/ui/button";
-import { Input } from "@/core/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { Button } from '@/core/components/ui/button';
+import { Input } from '@/core/components/ui/input';
 import { AlertCircle, Users, UserPlus, Trash2 } from 'lucide-react';
-import { Alert, AlertDescription } from "@/core/components/ui/alert";
+import { Alert, AlertDescription } from '@/core/components/ui/alert';
 import { useScoutManagement } from '@/core/hooks/useScoutManagement';
-import { toast } from "sonner";
+import { toast } from 'sonner';
 
 export const ScoutManagementSection: React.FC = () => {
   const { scoutsList, saveScout, removeScout } = useScoutManagement();
@@ -67,11 +67,11 @@ export const ScoutManagementSection: React.FC = () => {
             <Input
               placeholder="Enter scout name or initials..."
               value={newScoutName}
-              onChange={(e) => setNewScoutName(e.target.value)}
+              onChange={e => setNewScoutName(e.target.value)}
               onKeyPress={handleKeyPress}
               className="flex-1"
             />
-            <Button 
+            <Button
               onClick={handleAddScout}
               disabled={isAdding || !newScoutName.trim()}
               className="flex items-center gap-2"
@@ -89,17 +89,16 @@ export const ScoutManagementSection: React.FC = () => {
                 No scouts added yet. Add scouts above to create pit assignments.
                 <br />
                 <span className="text-xs text-muted-foreground mt-1 block">
-                  Since pit scouting happens before competition, you can add temporary names/initials here.
+                  Since pit scouting happens before competition, you can add temporary
+                  names/initials here.
                 </span>
               </AlertDescription>
             </Alert>
           ) : (
             <div className="space-y-2">
-              <div className="text-sm font-medium">
-                Available Scouts ({scoutsList.length}):
-              </div>
+              <div className="text-sm font-medium">Available Scouts ({scoutsList.length}):</div>
               <div className="flex flex-wrap gap-2">
-                {scoutsList.map((scout) => (
+                {scoutsList.map(scout => (
                   <div
                     key={scout}
                     className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 border"
@@ -121,7 +120,8 @@ export const ScoutManagementSection: React.FC = () => {
 
           {scoutsList.length > 0 && (
             <div className="text-xs text-muted-foreground">
-              💡 Tip: Teams will be divided into blocks among scouts. More scouts = smaller blocks per person.
+              💡 Tip: Teams will be divided into blocks among scouts. More scouts = smaller blocks
+              per person.
             </div>
           )}
         </div>

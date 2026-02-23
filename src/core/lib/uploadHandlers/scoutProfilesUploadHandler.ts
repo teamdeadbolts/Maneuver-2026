@@ -1,10 +1,22 @@
-import { toast } from "sonner";
-import { gamificationDB as gameDB, type Scout, type MatchPrediction } from "@/game-template/gamification";
-import type { UploadMode } from "./scoutingDataUploadHandler";
+import { toast } from 'sonner';
+import {
+  gamificationDB as gameDB,
+  type Scout,
+  type MatchPrediction,
+} from '@/game-template/gamification';
+import type { UploadMode } from './scoutingDataUploadHandler';
 
-export const handleScoutProfilesUpload = async (jsonData: unknown, mode: UploadMode): Promise<void> => {
-  if (!jsonData || typeof jsonData !== 'object' || !('scouts' in jsonData) || !('predictions' in jsonData)) {
-    toast.error("Invalid scout profiles format");
+export const handleScoutProfilesUpload = async (
+  jsonData: unknown,
+  mode: UploadMode
+): Promise<void> => {
+  if (
+    !jsonData ||
+    typeof jsonData !== 'object' ||
+    !('scouts' in jsonData) ||
+    !('predictions' in jsonData)
+  ) {
+    toast.error('Invalid scout profiles format');
     return;
   }
 
@@ -50,9 +62,12 @@ export const handleScoutProfilesUpload = async (jsonData: unknown, mode: UploadM
                 stakes: Math.max(scout.stakes, existing.stakes),
                 totalPredictions: Math.max(scout.totalPredictions, existing.totalPredictions),
                 correctPredictions: Math.max(scout.correctPredictions, existing.correctPredictions),
-                currentStreak: scout.lastUpdated > existing.lastUpdated ? scout.currentStreak : existing.currentStreak,
+                currentStreak:
+                  scout.lastUpdated > existing.lastUpdated
+                    ? scout.currentStreak
+                    : existing.currentStreak,
                 longestStreak: Math.max(scout.longestStreak, existing.longestStreak),
-                lastUpdated: Math.max(scout.lastUpdated, existing.lastUpdated)
+                lastUpdated: Math.max(scout.lastUpdated, existing.lastUpdated),
               });
               scoutsUpdated++;
             }
@@ -86,13 +101,14 @@ export const handleScoutProfilesUpload = async (jsonData: unknown, mode: UploadM
       }
     }
 
-    const message = mode === 'overwrite'
-      ? `Overwritten with ${scoutsAdded} scouts and ${predictionsAdded} predictions`
-      : `Profiles: ${scoutsAdded} new scouts, ${scoutsUpdated} updated scouts, ${predictionsAdded} predictions imported`;
+    const message =
+      mode === 'overwrite'
+        ? `Overwritten with ${scoutsAdded} scouts and ${predictionsAdded} predictions`
+        : `Profiles: ${scoutsAdded} new scouts, ${scoutsUpdated} updated scouts, ${predictionsAdded} predictions imported`;
 
     toast.success(message);
   } catch (error) {
     console.error('Error importing scout profiles:', error);
-    toast.error("Failed to import scout profiles");
+    toast.error('Failed to import scout profiles');
   }
 };

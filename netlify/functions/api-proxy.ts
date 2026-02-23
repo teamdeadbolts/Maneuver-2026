@@ -39,6 +39,8 @@ export const handler: Handler = async (event) => {
     'Content-Type': 'application/json',
   };
 
+  console.log('tba key: ', getServerApiKey('tba'));
+
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }

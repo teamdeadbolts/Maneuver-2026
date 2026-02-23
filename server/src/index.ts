@@ -6,6 +6,12 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from './generated/client.js';
+import type { DBStats, QueryFilters, ScoutingEntryBase } from '@/shared/types/scouting-entry.js';
+import type { PitScoutingEntryBase, PitScoutingStats } from '@/shared/core/types/pit-scouting.js';
+
+(BigInt as any).prototype.toJSON = function() {
+  return this.toString();
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,13 +27,8 @@ const prisma = new PrismaClient({ adapter });
 const app = express();
 
 app.use(cors());
-app.use(express.json());
-
-// Just log every request for debugging
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.path} - Body:`, req.body);
-  next();
-});
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Define API routes
 /** ====== MATCH SCOUTING ===== */
@@ -41,18 +42,358 @@ app.get('/api/matches/query', async (req, res) => {
   }
 });
 
+app.post('/api/matches/query', async (req, res) => {
+  try {
+    const filters = req.body as QueryFilters; // Expecting QueryFilters shape
+    const whereClause: any = {};
+
+    if (filters.teamNumbers) {
+      whereClause.teamNumber = { in: filters.teamNumbers };
+    }
+    if (filters.matchNumbers) {
+      whereClause.matchNumber = { in: filters.matchNumbers };
+    }
+    if (filters.eventKeys) {
+      whereClause.eventKey = { in: filters.eventKeys };
+    }
+    if (filters.alliances) {
+      whereClause.allianceColor = { in: filters.alliances };
+    }
+    if (filters.scoutNames) {
+      whereClause.scoutName = { in: filters.scoutNames };
+    }
+    if (filters.dateRange) {
+      whereClause.timestamp = {
+        gte: BigInt(filters.dateRange.start),
+        lte: BigInt(filters.dateRange.end),
+      };
+    }
+
+    const matches = await prisma.matchScouting.findMany({ where: whereClause });
+    res.json(matches);
+  } catch (error) {
+    console.error('Error querying matches:', error);
+    res.status(500).json({ error: 'Failed to query matches' });
+  }
+});
+
 app.post('/api/matches', async (req, res) => {
   try {
-    const entry = req.body;
-    const createdEntry = await prisma.matchScouting.create({ data: entry });
-    res.status(201).json(createdEntry);
+    const entry = req.body as ScoutingEntryBase;
+    const result = await updateOrCreateMatchScoutingEntry(entry);
+    res.json(result);
   } catch (error) {
     console.error('Error saving match scouting entry:', error);
     res.status(500).json({ error: 'Failed to save match scouting entry' });
   }
 });
 
+app.post('/api/matches/bulk', async (req, res) => {
+  try {
+    const entries = req.body as ScoutingEntryBase[];
+    const upsertPromises = entries.map(entry => updateOrCreateMatchScoutingEntry(entry));
+    const results = await Promise.all(upsertPromises);
+    res.json(results);
+  } catch (error) {
+    console.error('Error saving bulk match scouting entries:', error);
+    res.status(500).json({ error: 'Failed to save bulk match scouting entries' });
+  }
+});
 
+app.delete('/api/matches/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    await prisma.matchScouting.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting match scouting entry:', error);
+    res.status(500).json({ error: 'Failed to delete match scouting entry' });
+  }
+});
+
+app.delete('/api/matches/events/:eventKey', async (req, res) => {
+  try {
+    const eventKey = req.params.eventKey;
+    await prisma.matchScouting.deleteMany({ where: { eventKey } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing match scouting data:', error);
+    res.status(500).json({ error: 'Failed to clear match scouting data' });
+  }
+});
+
+app.delete('/api/matches/all', async (req, res) => {
+  try {
+    await prisma.matchScouting.deleteMany({});
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing all match scouting data:', error);
+    res.status(500).json({ error: 'Failed to clear all match scouting data' });
+  }
+});
+
+// Pit scouting routes
+app.post('/api/pit', async (req, res) => {
+  try {    
+    const entry = req.body as PitScoutingEntryBase;
+    const result = await updateOrCreatePitScoutingEntry(entry);
+    res.json(result);
+  } catch (error) {
+    console.error('Error saving pit scouting entry:', error);
+    res.status(500).json({ error: 'Failed to save pit scouting entry' });
+  }
+});
+
+app.post('/api/pit/bulk', async (req, res) => {
+  try {
+    const entries = req.body as PitScoutingEntryBase[];
+    const upsertPromises = entries.map(entry => updateOrCreatePitScoutingEntry(entry));
+    const results = await Promise.all(upsertPromises);
+    res.json(results);
+  } catch (error) {
+    console.error('Error saving bulk pit scouting entries:', error);
+    res.status(500).json({ error: 'Failed to save bulk pit scouting entries' });
+  }
+});
+
+app.get('/api/pit/query', async (req, res) => {
+  try {
+    const entries = (await prisma.pitScouting.findMany()).map(entry => ({
+      ...entry,
+      timestamp: Number(entry.timestamp),
+    })) as PitScoutingEntryBase[];
+    res.json(entries);
+  } catch (error) {
+    console.error('Error fetching pit scouting entries:', error);
+    res.status(500).json({ error: 'Failed to fetch pit scouting entries' });
+  }
+});
+
+app.post('/api/pit/query', async (req, res) => {
+  try {
+    const { teamNumber, eventKey } = req.body as { teamNumber?: number; eventKey?: string };
+    const whereClause: any = {};
+    if (teamNumber) whereClause.teamNumber = teamNumber;
+    if (eventKey) whereClause.eventKey = eventKey;
+
+    const entries = (await prisma.pitScouting.findMany({ where: whereClause })).map(entry => ({
+      ...entry,
+      timestamp: Number(entry.timestamp),
+    })) as PitScoutingEntryBase[];
+    res.json(entries);
+  } catch (error) {
+    console.error('Error querying pit scouting entries:', error);
+    res.status(500).json({ error: 'Failed to query pit scouting entries' });
+  }
+});
+
+
+app.get('/api/pit/event/:eventKey', async (req, res) => {
+  try {
+    const eventKey = req.params.eventKey;
+    const entries = (await prisma.pitScouting.findMany({ where: { eventKey } })).map(entry => ({
+      ...entry,
+      timestamp: Number(entry.timestamp),
+    })) as PitScoutingEntryBase[];
+    res.json(entries);
+  } catch (error) {
+    console.error('Error fetching pit scouting entries for event:', error);
+    res.status(500).json({ error: 'Failed to fetch pit scouting entries for event' });
+  }
+});
+
+app.delete('/api/pit/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    await prisma.pitScouting.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting pit scouting entry:', error);
+    res.status(500).json({ error: 'Failed to delete pit scouting entry' });
+  }
+});
+
+app.delete('/api/pit/all', async (req, res) => {
+  try {
+    await prisma.pitScouting.deleteMany({});
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing all pit scouting data:', error);
+    res.status(500).json({ error: 'Failed to clear all pit scouting data' });
+  }
+});
+
+app.delete('/api/pit/events/:eventKey', async (req, res) => {
+  try {
+    const eventKey = req.params.eventKey;
+    await prisma.pitScouting.deleteMany({ where: { eventKey } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing pit scouting data for event:', error);
+    res.status(500).json({ error: 'Failed to clear pit scouting data for event' });
+  }
+});
+
+app.get('/api/pit/stats', async (req, res) => {
+  try {
+    const totalEntries = await prisma.pitScouting.count();
+    const teams = await prisma.pitScouting.findMany({
+      distinct: ['teamNumber'],
+      select: { teamNumber: true },
+    });
+    const events = await prisma.pitScouting.findMany({
+      distinct: ['eventKey'],
+      select: { eventKey: true },
+    });
+    const scouts = await prisma.pitScouting.findMany({
+      distinct: ['scoutName'],
+      select: { scoutName: true },
+    });
+
+    const stats: PitScoutingStats = {
+      totalEntries,
+      teams: teams.map(t => t.teamNumber),
+      events: events.map(e => e.eventKey),
+      scouts: scouts.map(s => s.scoutName),
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching pit scouting stats:', error);
+    res.status(500).json({ error: 'Failed to fetch pit scouting stats' });
+  }
+});
+
+
+// Misc
+app.get('/api/stats', async (req, res) => {
+  try {
+    const totalEntries = await prisma.matchScouting.count();
+    const teams = await prisma.matchScouting.findMany({
+      distinct: ['teamNumber'],
+      select: { teamNumber: true },
+    });
+    const matches = await prisma.matchScouting.findMany({
+      distinct: ['matchKey'],
+      select: { matchKey: true },
+    });
+    const scouts = await prisma.matchScouting.findMany({
+      distinct: ['scoutName'],
+      select: { scoutName: true },
+    });
+    const events = await prisma.matchScouting.findMany({
+      distinct: ['eventKey'],
+      select: { eventKey: true },
+    });
+    const oldestEntry = await prisma.matchScouting.findFirst({
+      orderBy: { timestamp: 'asc' },
+      select: { timestamp: true },
+    });
+    const newestEntry = await prisma.matchScouting.findFirst({
+      orderBy: { timestamp: 'desc' },
+      select: { timestamp: true },
+    });
+
+    const stats: DBStats = {
+      totalEntries,
+      teams: teams.map(t => t.teamNumber.toString()),
+      matches: matches.map(m => m.matchKey),
+      scouts: scouts.map(s => s.scoutName),
+      events: events.map(e => e.eventKey),
+      oldestEntry: Number(oldestEntry?.timestamp || 0),
+      newestEntry: Number(newestEntry?.timestamp || 0),
+    };
+
+    res.json({ stats });
+  } catch (error) {
+    console.error('Error fetching match scouting stats:', error);
+    res.status(500).json({ error: 'Failed to fetch match scouting stats' });
+  }
+});
+
+app.post('/api/matches/import', async (req, res) => {
+  try {
+    const entries = req.body.entries as ScoutingEntryBase[];
+    const mode = req.body.mode as 'append' | 'overwrite';
+
+    if (mode === 'overwrite') {
+      // If overwrite, we clear all existing data before importing
+      await prisma.matchScouting.deleteMany({});
+    }
+
+    const upsertPromises = entries.map(entry => updateOrCreateMatchScoutingEntry(entry));
+    const results = await Promise.all(upsertPromises);
+    res.json({ success: true, importedCount: results.length });
+  } catch (error) {
+    console.error('Error importing match scouting entries:', error);
+    res.status(500).json({ error: 'Failed to import match scouting entries' });
+  }
+});
+
+// Utils
+
+const updateOrCreateMatchScoutingEntry = async (entry: ScoutingEntryBase) => {
+  const timestamp = BigInt(Math.round(entry.timestamp));
+
+  return await prisma.matchScouting.upsert({
+    where: { id: entry.id },
+    update: {
+      teamNumber: entry.teamNumber,
+      matchNumber: entry.matchNumber,
+      matchKey: entry.matchKey,
+      allianceColor: entry.allianceColor,
+      scoutName: entry.scoutName,
+      eventKey: entry.eventKey,
+      gameData: entry.gameData as any,
+      timestamp: timestamp,
+      isCorrected: entry.isCorrected,
+    },
+    create: {
+      id: entry.id,
+      teamNumber: entry.teamNumber,
+      matchNumber: entry.matchNumber,
+      matchKey: entry.matchKey,
+      allianceColor: entry.allianceColor,
+      scoutName: entry.scoutName,
+      eventKey: entry.eventKey,
+      gameData: entry.gameData as any,
+      timestamp: timestamp,
+      isCorrected: entry.isCorrected,
+    }
+  });
+};
+
+const updateOrCreatePitScoutingEntry = async (entry: PitScoutingEntryBase) => {
+  const timestamp = BigInt(Math.round(entry.timestamp));
+  return await prisma.pitScouting.upsert({
+    where: { id: entry.id },
+    update: {
+      teamNumber: entry.teamNumber,
+      eventKey: entry.eventKey,
+      scoutName: entry.scoutName,
+      timestamp: timestamp,
+      robotPhoto: entry.robotPhoto,
+      weight: entry.weight,
+      drivetrain: entry.drivetrain,
+      programmingLanguage: entry.programmingLanguage,
+      notes: entry.notes,
+      gameData: entry.gameData as any,
+    },
+    create: {
+      id: entry.id,
+      teamNumber: entry.teamNumber,
+      eventKey: entry.eventKey,
+      scoutName: entry.scoutName,
+      timestamp: timestamp,
+      robotPhoto: entry.robotPhoto,
+      weight: entry.weight,
+      drivetrain: entry.drivetrain,
+      programmingLanguage: entry.programmingLanguage,
+      notes: entry.notes,
+      gameData: entry.gameData as any,
+    }
+  });
+};
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API running on port ${PORT}`));

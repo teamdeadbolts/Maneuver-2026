@@ -1,15 +1,15 @@
-import { Label } from "@/core/components/ui/label";
-import { Input } from "@/core/components/ui/input";
-import { Button } from "@/core/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { EventNameSelector } from "@/core/components/GameStartComponents/EventNameSelector";
-import { User, Hash, Calendar, FolderOpen } from "lucide-react";
+import { Label } from '@/core/components/ui/label';
+import { Input } from '@/core/components/ui/input';
+import { Button } from '@/core/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { EventNameSelector } from '@/core/components/GameStartComponents/EventNameSelector';
+import { User, Hash, Calendar, FolderOpen } from 'lucide-react';
 
 interface BasicInformationProps {
-  teamNumber: number | "";
+  teamNumber: number | '';
   eventKey: string;
   scoutName: string;
-  onTeamNumberChange: (value: number | "") => void;
+  onTeamNumberChange: (value: number | '') => void;
   onEventKeyChange: (value: string) => void;
   onScoutNameChange: (value: string) => void;
   onLoadExisting?: () => void;
@@ -28,8 +28,8 @@ export function BasicInformation({
 }: BasicInformationProps) {
   const handleTeamNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    if (value === "") {
-      onTeamNumberChange("");
+    if (value === '') {
+      onTeamNumberChange('');
     } else {
       const numValue = parseInt(value, 10);
       if (!isNaN(numValue) && numValue > 0) {
@@ -38,7 +38,7 @@ export function BasicInformation({
     }
   };
 
-  const canLoadExisting = teamNumber !== "" && eventKey !== "";
+  const canLoadExisting = teamNumber !== '' && eventKey !== '';
 
   return (
     <Card>
@@ -72,7 +72,7 @@ export function BasicInformation({
             id="teamNumber"
             type="number"
             placeholder="e.g., 3314"
-            value={teamNumber === "" ? "" : teamNumber}
+            value={teamNumber === '' ? '' : teamNumber}
             onChange={handleTeamNumberChange}
             min="1"
             step="1"
@@ -87,10 +87,7 @@ export function BasicInformation({
             <Calendar className="h-4 w-4" />
             Event *
           </Label>
-          <EventNameSelector
-            currentEventKey={eventKey}
-            onEventKeyChange={onEventKeyChange}
-          />
+          <EventNameSelector currentEventKey={eventKey} onEventKeyChange={onEventKeyChange} />
         </div>
 
         {/* Scout Name Input */}
@@ -104,7 +101,7 @@ export function BasicInformation({
             type="text"
             placeholder="Your name"
             value={scoutName}
-            onChange={(e) => onScoutNameChange(e.target.value)}
+            onChange={e => onScoutNameChange(e.target.value)}
             required
             className="text-lg"
           />

@@ -36,7 +36,9 @@ export const MatchValidationPage: React.FC = () => {
   const [eventKey, setEventKey] = useState('');
   const [selectedMatch, setSelectedMatch] = useState<MatchListItem | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [validationConfig, setValidationConfig] = useState<ValidationConfig>(GAME_VALIDATION_DEFAULT_CONFIG);
+  const [validationConfig, setValidationConfig] = useState<ValidationConfig>(
+    GAME_VALIDATION_DEFAULT_CONFIG
+  );
   const [demoAutoValidated, setDemoAutoValidated] = useState(false);
   const [fuelOprRows, setFuelOprRows] = useState<FuelOPRDisplayRow[]>([]);
   const [fuelOprLambda, setFuelOprLambda] = useState<number | null>(null);
@@ -125,7 +127,9 @@ export const MatchValidationPage: React.FC = () => {
 
     let cancelled = false;
 
-    const parseFuelCounts = (gameData: Record<string, unknown>): { auto: number; teleop: number } => {
+    const parseFuelCounts = (
+      gameData: Record<string, unknown>
+    ): { auto: number; teleop: number } => {
       const auto = gameData.auto as Record<string, unknown> | undefined;
       const teleop = gameData.teleop as Record<string, unknown> | undefined;
 
@@ -161,11 +165,15 @@ export const MatchValidationPage: React.FC = () => {
         const opr = hybrid.opr;
 
         if (import.meta.env.DEV && eventKey.startsWith('demo')) {
-          console.log(`[Fuel OPR] Hybrid lambda for ${eventKey}: ${hybrid.selectedLambda.toFixed(3)} (${hybrid.mode})`);
+          console.log(
+            `[Fuel OPR] Hybrid lambda for ${eventKey}: ${hybrid.selectedLambda.toFixed(3)} (${hybrid.mode})`
+          );
 
           const latestSweep = hybrid.latestSweep;
           if (latestSweep && latestSweep.rows.length > 0) {
-            console.log(`[Fuel OPR] Latest sweep (train ${latestSweep.trainMatchCount}, holdout ${latestSweep.holdoutMatchCount})`);
+            console.log(
+              `[Fuel OPR] Latest sweep (train ${latestSweep.trainMatchCount}, holdout ${latestSweep.holdoutMatchCount})`
+            );
             console.table(
               latestSweep.rows.map(row => ({
                 lambda: row.lambda,
@@ -175,27 +183,34 @@ export const MatchValidationPage: React.FC = () => {
           }
         }
 
-        const scaledByTeam = new Map<number, {
-          matches: number;
-          autoSum: number;
-          teleopSum: number;
-        }>();
+        const scaledByTeam = new Map<
+          number,
+          {
+            matches: number;
+            autoSum: number;
+            teleopSum: number;
+          }
+        >();
 
         for (const entry of entries) {
           const team = entry.teamNumber;
           const gameData = (entry.gameData ?? {}) as Record<string, unknown>;
-          const scaledMetrics = gameData.scaledMetrics as {
-            scaledAutoFuel?: number;
-            scaledTeleopFuel?: number;
-          } | undefined;
+          const scaledMetrics = gameData.scaledMetrics as
+            | {
+                scaledAutoFuel?: number;
+                scaledTeleopFuel?: number;
+              }
+            | undefined;
 
           const rawFuel = parseFuelCounts(gameData);
-          const scaledAuto = typeof scaledMetrics?.scaledAutoFuel === 'number'
-            ? scaledMetrics.scaledAutoFuel
-            : rawFuel.auto;
-          const scaledTeleop = typeof scaledMetrics?.scaledTeleopFuel === 'number'
-            ? scaledMetrics.scaledTeleopFuel
-            : rawFuel.teleop;
+          const scaledAuto =
+            typeof scaledMetrics?.scaledAutoFuel === 'number'
+              ? scaledMetrics.scaledAutoFuel
+              : rawFuel.auto;
+          const scaledTeleop =
+            typeof scaledMetrics?.scaledTeleopFuel === 'number'
+              ? scaledMetrics.scaledTeleopFuel
+              : rawFuel.teleop;
 
           const current = scaledByTeam.get(team) ?? { matches: 0, autoSum: 0, teleopSum: 0 };
           current.matches += 1;
@@ -205,10 +220,7 @@ export const MatchValidationPage: React.FC = () => {
         }
 
         const oprByTeam = new Map(opr.teams.map(team => [team.teamNumber, team]));
-        const allTeamNumbers = new Set<number>([
-          ...oprByTeam.keys(),
-          ...scaledByTeam.keys(),
-        ]);
+        const allTeamNumbers = new Set<number>([...oprByTeam.keys(), ...scaledByTeam.keys()]);
 
         const rows: FuelOPRDisplayRow[] = [...allTeamNumbers]
           .map(teamNumber => {
@@ -216,8 +228,10 @@ export const MatchValidationPage: React.FC = () => {
             const scaledTeam = scaledByTeam.get(teamNumber);
             const matchesPlayed = Math.max(oprTeam?.matchesPlayed ?? 0, scaledTeam?.matches ?? 0);
 
-            const scaledAutoAvg = scaledTeam && scaledTeam.matches > 0 ? scaledTeam.autoSum / scaledTeam.matches : 0;
-            const scaledTeleopAvg = scaledTeam && scaledTeam.matches > 0 ? scaledTeam.teleopSum / scaledTeam.matches : 0;
+            const scaledAutoAvg =
+              scaledTeam && scaledTeam.matches > 0 ? scaledTeam.autoSum / scaledTeam.matches : 0;
+            const scaledTeleopAvg =
+              scaledTeam && scaledTeam.matches > 0 ? scaledTeam.teleopSum / scaledTeam.matches : 0;
 
             return {
               teamNumber,
@@ -230,7 +244,12 @@ export const MatchValidationPage: React.FC = () => {
               scaledTotalAvg: scaledAutoAvg + scaledTeleopAvg,
             };
           })
-          .sort((a, b) => b.totalFuelOPR - a.totalFuelOPR || b.scaledTotalAvg - a.scaledTotalAvg || a.teamNumber - b.teamNumber);
+          .sort(
+            (a, b) =>
+              b.totalFuelOPR - a.totalFuelOPR ||
+              b.scaledTotalAvg - a.scaledTotalAvg ||
+              a.teamNumber - b.teamNumber
+          );
 
         if (!cancelled) {
           setFuelOprRows(rows);
@@ -280,33 +299,25 @@ export const MatchValidationPage: React.FC = () => {
             >
               <Settings className="h-4 w-4" />
             </Button>
-            <Button
-              onClick={() => refreshResults()}
-              disabled={isValidating}
-              variant="outline"
-            >
+            <Button onClick={() => refreshResults()} disabled={isValidating} variant="outline">
               <RefreshCw className={`h-4 w-4 mr-2 ${isValidating ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
             <Button
               onClick={() => validateEvent()}
               disabled={isValidating || !eventKey}
-              className='p-4'
+              className="p-4"
             >
               {isValidating ? 'Validating...' : 'Validate Event'}
             </Button>
           </div>
         </div>
 
-
         {/* Event Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="flex items-center gap-2">
             <label className="font-medium shrink-0">Event:</label>
-            <EventNameSelector
-              currentEventKey={eventKey}
-              onEventKeyChange={handleEventChange}
-            />
+            <EventNameSelector currentEventKey={eventKey} onEventKeyChange={handleEventChange} />
           </div>
           {!eventKey && (
             <p className="text-sm text-muted-foreground wrap-break-word">
@@ -331,17 +342,11 @@ export const MatchValidationPage: React.FC = () => {
       )}
 
       {/* Summary Card */}
-      {matchList.length > 0 && (
-        <ValidationSummaryCard results={matchList} />
-      )}
+      {matchList.length > 0 && <ValidationSummaryCard results={matchList} />}
 
       {/* Fuel OPR + Scaled Fuel */}
       {eventKey && (
-        <FuelOPRCard
-          rows={fuelOprRows}
-          lambda={fuelOprLambda}
-          isLoading={fuelOprLoading}
-        />
+        <FuelOPRCard rows={fuelOprRows} lambda={fuelOprLambda} isLoading={fuelOprLoading} />
       )}
 
       {/* Filters */}

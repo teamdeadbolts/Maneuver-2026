@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
-import { loadScoutingData } from "@/core/lib/scoutingDataUtils";
-import { apiRequest } from "@/core/db/database";
-import { gamificationDB as gameDB } from "@/game-template/gamification";
-import { getPitScoutingStats } from "@/core/lib/pitScoutingUtils";
+import { useState, useEffect, useCallback } from 'react';
+import { loadScoutingData } from '@/core/lib/scoutingDataUtils';
+import { gamificationDB as gameDB } from '@/game-template/gamification';
+import { getPitScoutingStats } from '@/core/lib/pitScoutingUtils';
 
 export interface DataStats {
   scoutingDataCount: number;
@@ -18,7 +17,7 @@ export interface DataStats {
 }
 
 const formatDataSize = (data: BlobPart | null) => {
-  if (!data) return "0 B";
+  if (!data) return '0 B';
   const bytes = new Blob([data]).size;
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -32,11 +31,11 @@ export const useDataStats = () => {
     matchDataCount: 0,
     scoutGameDataCount: 0,
     apiDataCount: 0,
-    scoutingDataSize: "0 B",
-    pitScoutingDataSize: "0 B",
-    matchDataSize: "0 B",
-    scoutGameDataSize: "0 B",
-    apiDataSize: "0 B",
+    scoutingDataSize: '0 B',
+    pitScoutingDataSize: '0 B',
+    matchDataSize: '0 B',
+    scoutGameDataSize: '0 B',
+    apiDataSize: '0 B',
   });
 
   const loadScoutingCount = useCallback(async () => {
@@ -51,11 +50,11 @@ export const useDataStats = () => {
         scoutingDataSize: size,
       }));
     } catch (error) {
-      console.error("Error loading scouting data:", error);
+      console.error('Error loading scouting data:', error);
       setStats(prev => ({
         ...prev,
         scoutingDataCount: 0,
-        scoutingDataSize: "0 B",
+        scoutingDataSize: '0 B',
       }));
     }
   }, []);
@@ -65,10 +64,10 @@ export const useDataStats = () => {
       // 1. Fetch aggregated stats from the API
       const pitStats = await getPitScoutingStats();
 
-      // 2. Instead of downloading all rows to check size, 
+      // 2. Instead of downloading all rows to check size,
       // the API should return the database-level storage size.
       // If your API doesn't provide this yet, we use a fallback label.
-      const pitSize = "N/A";
+      const pitSize = 'N/A';
 
       setStats(prev => ({
         ...prev,
@@ -76,11 +75,11 @@ export const useDataStats = () => {
         pitScoutingDataSize: pitSize,
       }));
     } catch (error) {
-      console.error("Error loading pit scouting stats from API:", error);
+      console.error('Error loading pit scouting stats from API:', error);
       setStats(prev => ({
         ...prev,
         pitScoutingDataCount: 0,
-        pitScoutingDataSize: "0 B",
+        pitScoutingDataSize: '0 B',
       }));
     }
   }, []);
@@ -102,11 +101,11 @@ export const useDataStats = () => {
         scoutGameDataSize: gameDataSize,
       }));
     } catch (error) {
-      console.error("Error loading scout game data:", error);
+      console.error('Error loading scout game data:', error);
       setStats(prev => ({
         ...prev,
         scoutGameDataCount: 0,
-        scoutGameDataSize: "0 B",
+        scoutGameDataSize: '0 B',
       }));
     }
   }, []);
@@ -114,17 +113,18 @@ export const useDataStats = () => {
   const loadApiDataCount = useCallback(() => {
     try {
       const allKeys = Object.keys(localStorage);
-      const apiKeys = allKeys.filter(key =>
-        key.includes('tba_') ||
-        key.startsWith('tba_') ||
-        key.includes('nexus_') ||
-        key.startsWith('nexus_') ||
-        key === 'matchData' ||
-        key === 'eventsList' ||
-        key === 'eventKey' ||
-        key.includes('matchResults_') ||
-        key.includes('stakesAwarded_') ||
-        key.includes('pit_assignments_')
+      const apiKeys = allKeys.filter(
+        key =>
+          key.includes('tba_') ||
+          key.startsWith('tba_') ||
+          key.includes('nexus_') ||
+          key.startsWith('nexus_') ||
+          key === 'matchData' ||
+          key === 'eventsList' ||
+          key === 'eventKey' ||
+          key.includes('matchResults_') ||
+          key.includes('stakesAwarded_') ||
+          key.includes('pit_assignments_')
       );
 
       let totalSize = 0;
@@ -135,7 +135,7 @@ export const useDataStats = () => {
         }
       });
 
-      let sizeStr = "0 B";
+      let sizeStr = '0 B';
       if (totalSize < 1024) {
         sizeStr = `${totalSize} B`;
       } else if (totalSize < 1024 * 1024) {
@@ -150,11 +150,11 @@ export const useDataStats = () => {
         apiDataSize: sizeStr,
       }));
     } catch (error) {
-      console.error("Error loading API data stats:", error);
+      console.error('Error loading API data stats:', error);
       setStats(prev => ({
         ...prev,
         apiDataCount: 0,
-        apiDataSize: "0 B",
+        apiDataSize: '0 B',
       }));
     }
   }, []);
@@ -173,11 +173,11 @@ export const useDataStats = () => {
       matchDataCount: 0,
       scoutGameDataCount: 0,
       apiDataCount: 0,
-      scoutingDataSize: "0 B",
-      pitScoutingDataSize: "0 B",
-      matchDataSize: "0 B",
-      scoutGameDataSize: "0 B",
-      apiDataSize: "0 B",
+      scoutingDataSize: '0 B',
+      pitScoutingDataSize: '0 B',
+      matchDataSize: '0 B',
+      scoutGameDataSize: '0 B',
+      apiDataSize: '0 B',
     });
   }, []);
 
@@ -195,20 +195,20 @@ export const useDataStats = () => {
         setStats(prev => ({
           ...prev,
           matchDataCount: 0,
-          matchDataSize: "0 B",
+          matchDataSize: '0 B',
         }));
       }
     } else {
       setStats(prev => ({
         ...prev,
         matchDataCount: 0,
-        matchDataSize: "0 B",
+        matchDataSize: '0 B',
       }));
     }
   }, []);
 
   useEffect(() => {
-    const matchData = localStorage.getItem("matchData");
+    const matchData = localStorage.getItem('matchData');
     updateMatchData(matchData);
     refreshData();
   }, [refreshData, updateMatchData]);

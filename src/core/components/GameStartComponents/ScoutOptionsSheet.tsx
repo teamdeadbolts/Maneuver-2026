@@ -1,5 +1,5 @@
-import { Button } from "@/core/components/ui/button";
-import { Checkbox } from "@/core/components/ui/checkbox";
+import { Button } from '@/core/components/ui/button';
+import { Checkbox } from '@/core/components/ui/checkbox';
 import {
   Sheet,
   SheetContent,
@@ -7,15 +7,15 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/core/components/ui/sheet";
-import { Separator } from "@/core/components/ui/separator";
-import type { ScoutOptionsContentProps, ScoutOptionsState } from "@/types";
-import { Settings2 } from "lucide-react";
-import type { ComponentType } from "react";
+} from '@/core/components/ui/sheet';
+import { Separator } from '@/core/components/ui/separator';
+import type { ScoutOptionsContentProps, ScoutOptionsState } from '@/types';
+import { Settings2 } from 'lucide-react';
+import type { ComponentType } from 'react';
 
 export const CORE_SCOUT_OPTION_KEYS = {
-  placeholderOptionA: "placeholderOptionA",
-  placeholderOptionB: "placeholderOptionB",
+  placeholderOptionA: 'placeholderOptionA',
+  placeholderOptionB: 'placeholderOptionB',
 } as const;
 
 interface ScoutOptionsSheetProps {
@@ -45,9 +45,7 @@ export function ScoutOptionsSheet({
       <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Scout Options</SheetTitle>
-          <SheetDescription>
-            Configure scouting behavior before starting a match.
-          </SheetDescription>
+          <SheetDescription>Configure scouting behavior before starting a match.</SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
@@ -59,7 +57,7 @@ export function ScoutOptionsSheet({
             <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
               <Checkbox
                 checked={options[CORE_SCOUT_OPTION_KEYS.placeholderOptionA] ?? false}
-                onCheckedChange={(checked) =>
+                onCheckedChange={checked =>
                   onOptionChange(CORE_SCOUT_OPTION_KEYS.placeholderOptionA, checked === true)
                 }
                 className="mt-0.5"
@@ -67,7 +65,8 @@ export function ScoutOptionsSheet({
               <div>
                 <p className="text-sm font-medium">Placeholder option A</p>
                 <p className="text-xs text-muted-foreground">
-                  Reserved for future core-level configuration. Implement real behavior in game repos.
+                  Reserved for future core-level configuration. Implement real behavior in game
+                  repos.
                 </p>
               </div>
             </label>
@@ -75,7 +74,7 @@ export function ScoutOptionsSheet({
             <label className="flex items-start gap-3 rounded-lg border p-3 cursor-pointer">
               <Checkbox
                 checked={options[CORE_SCOUT_OPTION_KEYS.placeholderOptionB] ?? false}
-                onCheckedChange={(checked) =>
+                onCheckedChange={checked =>
                   onOptionChange(CORE_SCOUT_OPTION_KEYS.placeholderOptionB, checked === true)
                 }
                 className="mt-0.5"
@@ -83,7 +82,8 @@ export function ScoutOptionsSheet({
               <div>
                 <p className="text-sm font-medium">Placeholder option B</p>
                 <p className="text-xs text-muted-foreground">
-                  Reserved for future core-level configuration. Implement real behavior in game repos.
+                  Reserved for future core-level configuration. Implement real behavior in game
+                  repos.
                 </p>
               </div>
             </label>

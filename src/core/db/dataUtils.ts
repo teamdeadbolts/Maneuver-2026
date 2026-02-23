@@ -3,18 +3,16 @@
  * Provides ID generation, conflict detection, and data transformation
  */
 
-import type {
-  ScoutingEntryBase,
-} from '../types/scouting-entry';
+import type { ScoutingEntryBase } from '../../../shared/types/scouting-entry';
 import { loadAllScoutingEntries, saveScoutingEntries, apiRequest } from './database';
 
 /**
  * Generate deterministic composite ID from entry fields
  * Format: event::match::team::alliance
- * 
+ *
  * This creates natural collision detection - duplicate entries
  * for the same match will have the same ID.
- * 
+ *
  * @example
  * generateDeterministicEntryId("2025mrcmp", "qm42", "3314", "red")
  * // Returns: "2025mrcmp::qm42::3314::red"
@@ -55,8 +53,8 @@ export const generateEntryId = (entry: Partial<ScoutingEntryBase>): string => {
  * Conflict resolution strategies for data imports
  */
 export type ConflictResolution =
-  | 'autoImport'    // No conflict, safe to import
-  | 'autoReplace'   // Incoming is newer, auto-replace
+  | 'autoImport' // No conflict, safe to import
+  | 'autoReplace' // Incoming is newer, auto-replace
   | 'manualReview'; // User must decide
 
 export interface ConflictResult<TGameData = Record<string, unknown>> {
@@ -70,11 +68,11 @@ export interface ConflictResult<TGameData = Record<string, unknown>> {
 
 /**
  * Detect conflicts between incoming and existing data
- * 
+ *
  * Logic:
  * - No existing entry → autoImport
  * - Incoming is correction (has correction metadata) → autoReplace
- * - Incoming is newer by >30 seconds → autoReplace  
+ * - Incoming is newer by >30 seconds → autoReplace
  * - Otherwise → manualReview
  */
 export const detectConflicts = async <TGameData = Record<string, unknown>>(
@@ -88,12 +86,12 @@ export const detectConflicts = async <TGameData = Record<string, unknown>>(
 
   // 1. Collect all IDs to check in one go
   const ids = incomingEntries.map(e => e.id);
-  
+
   // 2. Fetch all existing records matching these IDs from Postgres
   // This endpoint should return a Map or Array of existing records
   const existingEntries = await apiRequest<ScoutingEntryBase<TGameData>[]>('/matches/query', {
     method: 'POST',
-    body: JSON.stringify({ ids })
+    body: JSON.stringify({ ids }),
   });
 
   const existingMap = new Map(existingEntries.map(e => [e.id, e]));

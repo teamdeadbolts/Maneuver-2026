@@ -1,6 +1,6 @@
 /**
  * Field Map Shared Components
- * 
+ *
  * Reusable components and utilities for field-based tracking interfaces.
  * Used by both Auto and Teleop phases.
  */
@@ -26,6 +26,3 @@ export { ZoneOverlay } from './ZoneOverlay';
 export { FieldHeader, type FieldHeaderProps, type FieldHeaderStat } from './FieldHeader';
 export { PendingWaypointPopup, type PendingWaypointPopupProps } from './PendingWaypointPopup';
 export { ShotTypePopup } from './ShotTypePopup';
-
-
-

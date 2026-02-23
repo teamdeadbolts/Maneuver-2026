@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
@@ -10,4 +10,4 @@ COPY . .
 RUN npm run build
 
 EXPOSE 5173
-RUN node dist/index.js
+RUN npm start

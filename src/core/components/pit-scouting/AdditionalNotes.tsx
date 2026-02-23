@@ -1,17 +1,14 @@
-import { Label } from "@/core/components/ui/label";
-import { Textarea } from "@/core/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { FileText } from "lucide-react";
+import { Label } from '@/core/components/ui/label';
+import { Textarea } from '@/core/components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '@/core/components/ui/card';
+import { FileText } from 'lucide-react';
 
 interface AdditionalNotesProps {
   notes?: string;
   onNotesChange: (value: string | undefined) => void;
 }
 
-export function AdditionalNotes({
-  notes,
-  onNotesChange,
-}: AdditionalNotesProps) {
+export function AdditionalNotes({ notes, onNotesChange }: AdditionalNotesProps) {
   return (
     <Card>
       <CardHeader>
@@ -21,14 +18,12 @@ export function AdditionalNotes({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        <Label htmlFor="notes">
-          General Observations
-        </Label>
+        <Label htmlFor="notes">General Observations</Label>
         <Textarea
           id="notes"
           placeholder="Any additional observations about the robot, team, or strategy..."
-          value={notes ?? ""}
-          onChange={(e) => onNotesChange(e.target.value || undefined)}
+          value={notes ?? ''}
+          onChange={e => onNotesChange(e.target.value || undefined)}
           rows={6}
           className="text-lg resize-none"
         />

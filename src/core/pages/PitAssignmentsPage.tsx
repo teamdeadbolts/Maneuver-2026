@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/core/components/animate-ui/radix/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/core/components/animate-ui/radix/tabs';
 import { AlertCircle, Users, BarChart3 } from 'lucide-react';
-import { Alert, AlertDescription } from "@/core/components/ui/alert";
+import { Alert, AlertDescription } from '@/core/components/ui/alert';
 import { useScoutManagement } from '@/core/hooks/useScoutManagement';
 import { getAllStoredEventTeams } from '@/core/lib/tbaUtils';
-import { getStoredNexusTeams, getStoredPitAddresses, getStoredPitData } from '@/core/lib/nexusUtils';
+import {
+  getStoredNexusTeams,
+  getStoredPitAddresses,
+  getStoredPitData,
+} from '@/core/lib/nexusUtils';
 import { loadPitScoutingEntry } from '@/core/lib/pitScoutingUtils';
 import { ScoutManagementSection } from '@/core/components/pit-assignments/ScoutManagementSection';
 import { TeamDisplaySection } from '@/core/components/pit-assignments/TeamDisplaySection';
@@ -23,7 +27,9 @@ const PitAssignmentsPage: React.FC = () => {
   const [pitAddresses, setPitAddresses] = useState<{ [teamNumber: string]: string } | null>(null);
   const [pitMapData, setPitMapData] = useState<NexusPitMap | null>(null);
   const [assignments, setAssignments] = useState<PitAssignment[]>([]);
-  const [assignmentMode, setAssignmentMode] = useState<'sequential' | 'spatial' | 'manual'>('sequential');
+  const [assignmentMode, setAssignmentMode] = useState<'sequential' | 'spatial' | 'manual'>(
+    'sequential'
+  );
   const [activeTab, setActiveTab] = useState<string>('teams');
   const [selectedScoutForAssignment, setSelectedScoutForAssignment] = useState<string | null>(null);
   const [assignmentsConfirmed, setAssignmentsConfirmed] = useState<boolean>(false);
@@ -70,7 +76,9 @@ const PitAssignmentsPage: React.FC = () => {
           if (nexusTeams && nexusTeams.length > 0) {
             // Convert from frc format to numbers (frc123 -> 123)
             const teamNumbers = nexusTeams
-              .map(teamKey => teamKey.startsWith('frc') ? parseInt(teamKey.substring(3)) : parseInt(teamKey))
+              .map(teamKey =>
+                teamKey.startsWith('frc') ? parseInt(teamKey.substring(3)) : parseInt(teamKey)
+              )
               .filter(num => !isNaN(num))
               .sort((a, b) => a - b);
 
@@ -176,7 +184,7 @@ const PitAssignmentsPage: React.FC = () => {
       let hasUpdates = false;
 
       const updatedAssignments = await Promise.all(
-        assignments.map(async (assignment) => {
+        assignments.map(async assignment => {
           try {
             const pitData = await loadPitScoutingEntry(assignment.teamNumber, eventName);
             const shouldBeCompleted = !!pitData;
@@ -215,7 +223,10 @@ const PitAssignmentsPage: React.FC = () => {
     if (!selectedEvent || assignments.length === 0) return;
 
     // Create a unique key for this set of assignments to prevent repeated checks
-    const assignmentKey = `${selectedEvent}_${assignments.length}_${assignments.map(a => a.id).sort().join('_')}`;
+    const assignmentKey = `${selectedEvent}_${assignments.length}_${assignments
+      .map(a => a.id)
+      .sort()
+      .join('_')}`;
 
     // Only run this check if we haven't checked this exact set of assignments before
     if (hasRunInitialPitCheck === assignmentKey) return;
@@ -225,7 +236,7 @@ const PitAssignmentsPage: React.FC = () => {
       let hasUpdates = false;
 
       const updatedAssignments = await Promise.all(
-        assignments.map(async (assignment) => {
+        assignments.map(async assignment => {
           try {
             const pitData = await loadPitScoutingEntry(assignment.teamNumber, eventName);
             const shouldBeCompleted = !!pitData;
@@ -263,13 +274,16 @@ const PitAssignmentsPage: React.FC = () => {
     setAssignmentsConfirmed(false); // Reset confirmed state
   };
 
-  const handleAssignmentsGenerated = async (newAssignments: PitAssignment[], confirmed: boolean) => {
+  const handleAssignmentsGenerated = async (
+    newAssignments: PitAssignment[],
+    confirmed: boolean
+  ) => {
     // Check for existing pit scouting data and mark teams as completed
     if (selectedEvent && newAssignments.length > 0) {
       const eventName = selectedEvent;
 
       const updatedAssignments = await Promise.all(
-        newAssignments.map(async (assignment) => {
+        newAssignments.map(async assignment => {
           try {
             const pitData = await loadPitScoutingEntry(assignment.teamNumber, eventName);
             if (pitData) {
@@ -309,14 +323,17 @@ const PitAssignmentsPage: React.FC = () => {
       const filtered = prev.filter(a => a.teamNumber !== teamNumber);
 
       // Add new assignment
-      return [...filtered, {
-        id: assignmentId,
-        eventKey: selectedEvent,
-        teamNumber,
-        scoutName,
-        assignedAt: Date.now(),
-        completed
-      }];
+      return [
+        ...filtered,
+        {
+          id: assignmentId,
+          eventKey: selectedEvent,
+          teamNumber,
+          scoutName,
+          assignedAt: Date.now(),
+          completed,
+        },
+      ];
     });
   };
 
@@ -342,11 +359,13 @@ const PitAssignmentsPage: React.FC = () => {
   };
 
   const handleToggleCompleted = (assignmentId: string) => {
-    setAssignments(prev => prev.map(assignment =>
-      assignment.id === assignmentId
-        ? { ...assignment, completed: !assignment.completed }
-        : assignment
-    ));
+    setAssignments(prev =>
+      prev.map(assignment =>
+        assignment.id === assignmentId
+          ? { ...assignment, completed: !assignment.completed }
+          : assignment
+      )
+    );
   };
 
   return (
@@ -355,9 +374,7 @@ const PitAssignmentsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">Pit Assignments</h1>
-            <p className="text-muted-foreground">
-              Manage scouts and assign teams for pit scouting
-            </p>
+            <p className="text-muted-foreground">Manage scouts and assign teams for pit scouting</p>
           </div>
           {/* Data source attribution */}
           <div className="hidden md:block">
@@ -408,12 +425,7 @@ const PitAssignmentsPage: React.FC = () => {
 
       {/* Tabbed Interface for Team Display and Assignment Results */}
       {selectedEvent && currentTeams.length > 0 && (
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          enableSwipe={true}
-          className="w-full"
-        >
+        <Tabs value={activeTab} onValueChange={setActiveTab} enableSwipe={true} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="teams" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -438,7 +450,11 @@ const PitAssignmentsPage: React.FC = () => {
                 onRemoveAssignment={handleRemoveAssignment}
                 selectedScoutForAssignment={selectedScoutForAssignment}
                 onScoutSelectionChange={setSelectedScoutForAssignment}
-                onConfirmAssignments={assignmentMode === 'manual' && !assignmentsConfirmed ? handleConfirmAssignments : undefined}
+                onConfirmAssignments={
+                  assignmentMode === 'manual' && !assignmentsConfirmed
+                    ? handleConfirmAssignments
+                    : undefined
+                }
                 onClearAllAssignments={handleClearAssignments}
                 assignmentsConfirmed={assignmentsConfirmed}
                 pitAddresses={pitAddresses}
@@ -462,7 +478,11 @@ const PitAssignmentsPage: React.FC = () => {
                 onScoutSelectionChange={setSelectedScoutForAssignment}
                 assignmentsConfirmed={assignmentsConfirmed}
                 allTeams={currentTeams}
-                onConfirmAssignments={assignmentMode === 'manual' && !assignmentsConfirmed ? handleConfirmAssignments : undefined}
+                onConfirmAssignments={
+                  assignmentMode === 'manual' && !assignmentsConfirmed
+                    ? handleConfirmAssignments
+                    : undefined
+                }
                 pitAddresses={pitAddresses}
               />
             </div>
@@ -475,8 +495,9 @@ const PitAssignmentsPage: React.FC = () => {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            {currentTeams.length === 0 && "No team data found. Please load demo data from the home page or import teams from the TBA Data page."}
-            {scoutsList.length === 0 && " Please add scouts to create assignments."}
+            {currentTeams.length === 0 &&
+              'No team data found. Please load demo data from the home page or import teams from the TBA Data page.'}
+            {scoutsList.length === 0 && ' Please add scouts to create assignments.'}
           </AlertDescription>
         </Alert>
       )}

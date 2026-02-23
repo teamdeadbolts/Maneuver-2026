@@ -1,9 +1,9 @@
 /**
  * Core Types Barrel Export
- * 
+ *
  * SINGLE SOURCE OF TRUTH for all core framework types.
  * Import from '@/core/types' instead of individual files.
- * 
+ *
  * Organization:
  * - scouting-entry.ts: ScoutingEntryBase and match scouting types
  * - team-stats.ts: TeamStats calculated statistics
@@ -11,10 +11,10 @@
  */
 
 // Match scouting types
-export * from './scouting-entry';
+export * from '../../../shared/types/scouting-entry';
 
 // Team statistics types
 export * from './team-stats';
 
 // Pit scouting types
-export * from './pit-scouting';
+export * from '../../../shared/core/types/pit-scouting';

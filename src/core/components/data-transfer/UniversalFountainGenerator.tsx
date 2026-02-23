@@ -1,32 +1,46 @@
 /**
  * Universal QR Fountain Code Generator
  * Framework component - game-agnostic
- * 
+ *
  * Generates multiple QR codes using Luby Transform fountain codes for reliable data transfer.
  * Supports auto-cycling, playback controls, and smart compression.
  */
 
-import { useState, useEffect } from "react";
-import { QRCodeSVG } from "qrcode.react";
-import { Button } from "@/core/components/ui/button";
-import { Input } from "@/core/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/core/components/ui/alert";
-import { Badge } from "@/core/components/ui/badge";
-import { toast } from "sonner";
-import { createEncoder, blockToBinary } from "luby-transform";
-import { fromUint8Array } from "js-base64";
-import { Info, Play, Pause, SkipForward, SkipBack, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Button } from '@/core/components/ui/button';
+import { Input } from '@/core/components/ui/input';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/core/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/core/components/ui/alert';
+import { Badge } from '@/core/components/ui/badge';
+import { toast } from 'sonner';
+import { createEncoder, blockToBinary } from 'luby-transform';
+import { fromUint8Array } from 'js-base64';
+import {
+  Info,
+  Play,
+  Pause,
+  SkipForward,
+  SkipBack,
+  ChevronsLeft,
+  ChevronsRight,
+} from 'lucide-react';
 import {
   shouldUseCompression,
   getCompressionStats,
   compressData,
   MIN_FOUNTAIN_SIZE_COMPRESSED,
   MIN_FOUNTAIN_SIZE_UNCOMPRESSED,
-  QR_CODE_SIZE_BYTES
-} from "@/core/lib/compressionUtils";
-import { getFountainEstimate, type FountainProfile } from "@/core/lib/fountainUtils";
-import { buildCompactPacketJson, buildLegacyPacketJson } from "@/core/lib/fountainPacket";
+  QR_CODE_SIZE_BYTES,
+} from '@/core/lib/compressionUtils';
+import { getFountainEstimate, type FountainProfile } from '@/core/lib/fountainUtils';
+import { buildCompactPacketJson, buildLegacyPacketJson } from '@/core/lib/fountainPacket';
 
 interface FountainPacket {
   type: string;
@@ -60,7 +74,7 @@ export const UniversalFountainGenerator = ({
   compressData: customCompress,
   title,
   description,
-  noDataMessage
+  noDataMessage,
 }: UniversalFountainGeneratorProps) => {
   const [packets, setPackets] = useState<FountainPacket[]>([]);
   const [currentPacketIndex, setCurrentPacketIndex] = useState(0);
@@ -73,13 +87,13 @@ export const UniversalFountainGenerator = ({
 
   // Speed presets
   const speedPresets = [
-    { label: "Default (2/sec)", value: 500 },
-    { label: "Slower (1/sec)", value: 1000 }
+    { label: 'Default (2/sec)', value: 500 },
+    { label: 'Slower (1/sec)', value: 1000 },
   ];
 
   const profilePresets: Array<{ label: string; value: FountainProfile; description: string }> = [
-    { label: "Fast", value: 'fast', description: "Fewer scans, lower redundancy" },
-    { label: "Reliable", value: 'reliable', description: "More scans, higher redundancy" }
+    { label: 'Fast', value: 'fast', description: 'Fewer scans, lower redundancy' },
+    { label: 'Reliable', value: 'reliable', description: 'More scans, higher redundancy' },
   ];
 
   // Load data on mount
@@ -98,7 +112,10 @@ export const UniversalFountainGenerator = ({
         }
       } catch (error) {
         console.error(`Error loading ${dataType} data:`, error);
-        toast.error(`Error loading ${dataType} data: ` + (error instanceof Error ? error.message : String(error)));
+        toast.error(
+          `Error loading ${dataType} data: ` +
+            (error instanceof Error ? error.message : String(error))
+        );
         setData(null);
       }
     };
@@ -126,7 +143,9 @@ export const UniversalFountainGenerator = ({
       encodedData = customCompress(data, jsonString);
       const stats = getCompressionStats(data, encodedData, jsonString);
       currentCompressionInfo = `Custom compression: ${stats.originalSize} → ${stats.compressedSize} bytes (${(100 - stats.compressionRatio * 100).toFixed(1)}% reduction, ${stats.estimatedQRReduction})`;
-      toast.success(`Compressed ${dataType} data: ${(100 - stats.compressionRatio * 100).toFixed(1)}% size reduction!`);
+      toast.success(
+        `Compressed ${dataType} data: ${(100 - stats.compressionRatio * 100).toFixed(1)}% size reduction!`
+      );
     } else if (shouldUseCompression(data, jsonString)) {
       // Use standard compression
       if (import.meta.env.DEV) {
@@ -135,7 +154,9 @@ export const UniversalFountainGenerator = ({
       encodedData = compressData(data, jsonString);
       const stats = getCompressionStats(data, encodedData, jsonString);
       currentCompressionInfo = `Standard compression: ${stats.originalSize} → ${stats.compressedSize} bytes (${(100 - stats.compressionRatio * 100).toFixed(1)}% reduction, ${stats.estimatedQRReduction})`;
-      toast.success(`Compressed data: ${(100 - stats.compressionRatio * 100).toFixed(1)}% size reduction!`);
+      toast.success(
+        `Compressed data: ${(100 - stats.compressionRatio * 100).toFixed(1)}% size reduction!`
+      );
     } else {
       // No compression - use standard JSON encoding
       encodedData = new TextEncoder().encode(jsonString);
@@ -147,11 +168,17 @@ export const UniversalFountainGenerator = ({
 
     // Validate data size - need sufficient data for meaningful fountain codes
     const isCompressed = currentCompressionInfo.toLowerCase().includes('compress');
-    const minDataSize = isCompressed ? MIN_FOUNTAIN_SIZE_COMPRESSED : MIN_FOUNTAIN_SIZE_UNCOMPRESSED;
+    const minDataSize = isCompressed
+      ? MIN_FOUNTAIN_SIZE_COMPRESSED
+      : MIN_FOUNTAIN_SIZE_UNCOMPRESSED;
 
     if (encodedData.length < minDataSize) {
-      toast.error(`${dataType} data is too small (${encodedData.length} bytes). Need at least ${minDataSize} bytes for fountain code generation.`);
-      console.warn(`Data too small for fountain codes: ${encodedData.length} bytes (min: ${minDataSize})`);
+      toast.error(
+        `${dataType} data is too small (${encodedData.length} bytes). Need at least ${minDataSize} bytes for fountain code generation.`
+      );
+      console.warn(
+        `Data too small for fountain codes: ${encodedData.length} bytes (min: ${minDataSize})`
+      );
       return;
     }
 
@@ -178,7 +205,9 @@ export const UniversalFountainGenerator = ({
     const maxIterations = targetPackets * 5;
 
     if (import.meta.env.DEV) {
-      console.log(`📊 Fountain code generation [${fountainProfile}]: ${estimatedBlocks} blocks @ ${blockSize} bytes/block, targeting ${targetPackets} packets (${Math.round((redundancyFactor - 1) * 100)}% redundancy)`);
+      console.log(
+        `📊 Fountain code generation [${fountainProfile}]: ${estimatedBlocks} blocks @ ${blockSize} bytes/block, targeting ${targetPackets} packets (${Math.round((redundancyFactor - 1) * 100)}% redundancy)`
+      );
     }
 
     for (const block of ltEncoder.fountain()) {
@@ -186,8 +215,12 @@ export const UniversalFountainGenerator = ({
 
       // Safety check to prevent infinite loops
       if (iterationCount > maxIterations) {
-        console.warn(`⚠️ Reached maximum iterations (${maxIterations}), stopping generation with ${generatedPackets.length} packets`);
-        console.warn(`Target was ${targetPackets} packets, achieved ${Math.round((generatedPackets.length / targetPackets) * 100)}%`);
+        console.warn(
+          `⚠️ Reached maximum iterations (${maxIterations}), stopping generation with ${generatedPackets.length} packets`
+        );
+        console.warn(
+          `Target was ${targetPackets} packets, achieved ${Math.round((generatedPackets.length / targetPackets) * 100)}%`
+        );
         break;
       }
 
@@ -209,24 +242,25 @@ export const UniversalFountainGenerator = ({
         const binary = blockToBinary(block);
         const base64Data = fromUint8Array(binary);
 
-        const packetJson = fountainProfile === 'reliable'
-          ? buildLegacyPacketJson({
-            type: `${dataType}_fountain_packet`,
-            sessionId: newSessionId,
-            packetId,
-            data: base64Data,
-            k: block.k,
-            bytes: block.bytes,
-            checksum: String(block.checksum),
-            indices: block.indices
-          })
-          : buildCompactPacketJson({
-            type: `${dataType}_fountain_packet`,
-            sessionId: newSessionId,
-            packetId,
-            profile: fountainProfile,
-            data: base64Data
-          });
+        const packetJson =
+          fountainProfile === 'reliable'
+            ? buildLegacyPacketJson({
+                type: `${dataType}_fountain_packet`,
+                sessionId: newSessionId,
+                packetId,
+                data: base64Data,
+                k: block.k,
+                bytes: block.bytes,
+                checksum: String(block.checksum),
+                indices: block.indices,
+              })
+            : buildCompactPacketJson({
+                type: `${dataType}_fountain_packet`,
+                sessionId: newSessionId,
+                packetId,
+                profile: fountainProfile,
+                data: base64Data,
+              });
 
         const packet: FountainPacket = {
           type: `${dataType}_fountain_packet`,
@@ -238,11 +272,11 @@ export const UniversalFountainGenerator = ({
           k: block.k,
           bytes: block.bytes,
           checksum: String(block.checksum),
-          indices: block.indices
+          indices: block.indices,
         };
 
         // 90% of QR capacity to leave room for encoding overhead
-        if (packetJson.length > (QR_CODE_SIZE_BYTES * 0.9)) {
+        if (packetJson.length > QR_CODE_SIZE_BYTES * 0.9) {
           console.warn(`📦 Packet ${packetId} too large (${packetJson.length} chars), skipping`);
           continue;
         }
@@ -262,7 +296,9 @@ export const UniversalFountainGenerator = ({
 
     const selectedSpeed = speedPresets.find(s => s.value === cycleSpeed);
     const estimatedTime = Math.round((generatedPackets.length * cycleSpeed) / 1000);
-    toast.success(`Generated ${generatedPackets.length} packets - cycling at ${selectedSpeed?.label}! (~${estimatedTime}s per cycle)`);
+    toast.success(
+      `Generated ${generatedPackets.length} packets - cycling at ${selectedSpeed?.label}! (~${estimatedTime}s per cycle)`
+    );
   };
 
   // Auto-cycle packets based on selected speed (respects pause state)
@@ -333,7 +369,7 @@ export const UniversalFountainGenerator = ({
     return {
       size: encodedData.length,
       sufficient: encodedData.length >= minSize,
-      compressed: useCompression
+      compressed: useCompression,
     };
   };
 
@@ -346,20 +382,11 @@ export const UniversalFountainGenerator = ({
       <div className="flex flex-col items-center gap-4 max-w-md w-full pb-4">
         {/* Navigation Header */}
         <div className="flex items-center justify-between w-full">
-          <Button
-            onClick={onBack}
-            variant="ghost"
-            size="sm"
-            className="flex items-center gap-2"
-          >
+          <Button onClick={onBack} variant="ghost" size="sm" className="flex items-center gap-2">
             ← Back
           </Button>
           {onSwitchToScanner && (
-            <Button
-              onClick={onSwitchToScanner}
-              variant="outline"
-              size="sm"
-            >
+            <Button onClick={onSwitchToScanner} variant="outline" size="sm">
               Switch to Scanner
             </Button>
           )}
@@ -384,10 +411,10 @@ export const UniversalFountainGenerator = ({
               <div className="w-full">
                 <p className="text-sm font-medium mb-2 text-center">Cycle Speed:</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {speedPresets.map((preset) => (
+                  {speedPresets.map(preset => (
                     <Button
                       key={preset.value}
-                      variant={cycleSpeed === preset.value ? "default" : "outline"}
+                      variant={cycleSpeed === preset.value ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setCycleSpeed(preset.value)}
                       className="text-xs"
@@ -401,10 +428,10 @@ export const UniversalFountainGenerator = ({
               <div className="w-full">
                 <p className="text-sm font-medium mb-2 text-center">Transfer Profile:</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {profilePresets.map((preset) => (
+                  {profilePresets.map(preset => (
                     <Button
                       key={preset.value}
-                      variant={fountainProfile === preset.value ? "default" : "outline"}
+                      variant={fountainProfile === preset.value ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFountainProfile(preset.value)}
                       className="text-xs"
@@ -428,15 +455,16 @@ export const UniversalFountainGenerator = ({
 
               {!data ? (
                 <Alert variant="destructive">
-                  <AlertDescription>
-                    {noDataMessage}
-                  </AlertDescription>
+                  <AlertDescription>{noDataMessage}</AlertDescription>
                 </Alert>
               ) : data && !isDataSufficient() ? (
                 <Alert variant="destructive">
                   <AlertDescription className="col-span-2">
-                    {dataType} data is too small ({dataSizeInfo?.size || 0} bytes).
-                    Need at least {dataSizeInfo?.compressed ? MIN_FOUNTAIN_SIZE_COMPRESSED : MIN_FOUNTAIN_SIZE_UNCOMPRESSED} bytes for fountain code generation.
+                    {dataType} data is too small ({dataSizeInfo?.size || 0} bytes). Need at least{' '}
+                    {dataSizeInfo?.compressed
+                      ? MIN_FOUNTAIN_SIZE_COMPRESSED
+                      : MIN_FOUNTAIN_SIZE_UNCOMPRESSED}{' '}
+                    bytes for fountain code generation.
                     {dataSizeInfo?.compressed && ' (Compressed data threshold)'}
                   </AlertDescription>
                 </Alert>
@@ -449,8 +477,9 @@ export const UniversalFountainGenerator = ({
             <Alert>
               <AlertTitle className="col-span-2">📱 Scanning Instructions</AlertTitle>
               <AlertDescription className="col-span-2">
-                Point your scanner at the QR code. Use playback controls to pause, navigate, or jump to specific packets.
-                Estimated time per cycle: {Math.round((packets.length * cycleSpeed) / 1000)}s
+                Point your scanner at the QR code. Use playback controls to pause, navigate, or jump
+                to specific packets. Estimated time per cycle:{' '}
+                {Math.round((packets.length * cycleSpeed) / 1000)}s
               </AlertDescription>
             </Alert>
 
@@ -480,10 +509,10 @@ export const UniversalFountainGenerator = ({
                 <div className="w-full">
                   <p className="text-sm font-medium mb-2">Cycle Speed:</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {speedPresets.map((preset) => (
+                    {speedPresets.map(preset => (
                       <Button
                         key={preset.value}
-                        variant={cycleSpeed === preset.value ? "default" : "outline"}
+                        variant={cycleSpeed === preset.value ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setCycleSpeed(preset.value)}
                         className="text-xs"
@@ -506,37 +535,26 @@ export const UniversalFountainGenerator = ({
                     >
                       <ChevronsLeft className="h-4 w-4" />
                     </Button>
-                    <Button
-                      onClick={goToPrevPacket}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
+                    <Button onClick={goToPrevPacket} variant="outline" size="sm" className="flex-1">
                       <SkipBack className="h-4 w-4" />
                     </Button>
                     <Button
                       onClick={togglePlayPause}
-                      variant={isPaused ? "default" : "secondary"}
+                      variant={isPaused ? 'default' : 'secondary'}
                       size="sm"
                       className="flex-2"
                     >
-                      {isPaused ? <Play className="h-4 w-4 mr-1" /> : <Pause className="h-4 w-4 mr-1" />}
-                      {isPaused ? "Play" : "Pause"}
+                      {isPaused ? (
+                        <Play className="h-4 w-4 mr-1" />
+                      ) : (
+                        <Pause className="h-4 w-4 mr-1" />
+                      )}
+                      {isPaused ? 'Play' : 'Pause'}
                     </Button>
-                    <Button
-                      onClick={goToNextPacket}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
+                    <Button onClick={goToNextPacket} variant="outline" size="sm" className="flex-1">
                       <SkipForward className="h-4 w-4" />
                     </Button>
-                    <Button
-                      onClick={goToLastPacket}
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                    >
+                    <Button onClick={goToLastPacket} variant="outline" size="sm" className="flex-1">
                       <ChevronsRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -552,7 +570,7 @@ export const UniversalFountainGenerator = ({
                       pattern="[0-9]*"
                       placeholder="Packet #"
                       value={jumpToPacket}
-                      onChange={(e) => {
+                      onChange={e => {
                         const value = e.target.value;
                         // Only allow numeric input
                         if (value === '' || /^\d+$/.test(value)) {
@@ -567,7 +585,11 @@ export const UniversalFountainGenerator = ({
                       onClick={jumpToSpecificPacket}
                       variant="outline"
                       size="sm"
-                      disabled={!jumpToPacket || parseInt(jumpToPacket) < 1 || parseInt(jumpToPacket) > packets.length}
+                      disabled={
+                        !jumpToPacket ||
+                        parseInt(jumpToPacket) < 1 ||
+                        parseInt(jumpToPacket) > packets.length
+                      }
                     >
                       Jump
                     </Button>
@@ -577,7 +599,8 @@ export const UniversalFountainGenerator = ({
                 <div className="flex items-start gap-2">
                   <Info className="inline mt-0.5 text-muted-foreground shrink-0" size={16} />
                   <p className="text-xs text-muted-foreground">
-                    If unable to get final packets, try slowing down the cycle speed or use manual navigation.
+                    If unable to get final packets, try slowing down the cycle speed or use manual
+                    navigation.
                   </p>
                 </div>
               </CardContent>
@@ -588,9 +611,7 @@ export const UniversalFountainGenerator = ({
               <Card className="w-full">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">
-                      Packet #{currentPacket.packetId + 1}
-                    </CardTitle>
+                    <CardTitle className="text-lg">Packet #{currentPacket.packetId + 1}</CardTitle>
                     <Badge variant="outline">
                       {currentSpeedLabel} · {currentPacket.profile}
                     </Badge>
@@ -598,9 +619,7 @@ export const UniversalFountainGenerator = ({
                   <CardDescription>
                     Broadcasting {packets.length} fountain packets
                     {compressionInfo && (
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {compressionInfo}
-                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">{compressionInfo}</div>
                     )}
                   </CardDescription>
                 </CardHeader>
@@ -611,26 +630,35 @@ export const UniversalFountainGenerator = ({
                       <span className="ml-1 break-all">
                         {currentPacket.indices && currentPacket.indices.length > 20
                           ? `[${currentPacket.indices.slice(0, 20).join(',')}...+${currentPacket.indices.length - 20} more]`
-                          : `[${(currentPacket.indices || []).join(',')}]`
-                        }
+                          : `[${(currentPacket.indices || []).join(',')}]`}
                       </span>
                     </div>
-                    <p><span className="font-medium">K:</span> {currentPacket.k ?? '-'} | <span className="font-medium">Bytes:</span> {currentPacket.bytes ?? '-'}</p>
-                    <p><span className="font-medium">Checksum:</span> {currentPacket.checksum ? `${String(currentPacket.checksum).slice(0, 8)}...` : '-'}</p>
+                    <p>
+                      <span className="font-medium">K:</span> {currentPacket.k ?? '-'} |{' '}
+                      <span className="font-medium">Bytes:</span> {currentPacket.bytes ?? '-'}
+                    </p>
+                    <p>
+                      <span className="font-medium">Checksum:</span>{' '}
+                      {currentPacket.checksum
+                        ? `${String(currentPacket.checksum).slice(0, 8)}...`
+                        : '-'}
+                    </p>
                   </div>
 
                   {/* Progress Indicator */}
                   <div className="w-full">
                     <div className="flex justify-between text-sm mb-2">
                       <span>Current cycle:</span>
-                      <span>{currentPacketIndex + 1}/{packets.length}</span>
+                      <span>
+                        {currentPacketIndex + 1}/{packets.length}
+                      </span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-2">
                       <div
                         className="bg-primary h-2 rounded-full transition-all ease-linear"
                         style={{
                           width: `${((currentPacketIndex + 1) / packets.length) * 100}%`,
-                          transitionDuration: `${cycleSpeed}ms`
+                          transitionDuration: `${cycleSpeed}ms`,
                         }}
                       />
                     </div>

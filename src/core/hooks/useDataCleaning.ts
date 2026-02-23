@@ -1,9 +1,9 @@
-import { useCallback } from "react";
-import { toast } from "sonner";
-import { clearAllScoutingData } from "@/core/db/database";
-import { clearGamificationData as clearGameData } from "@/game-template/gamification";
-import { clearAllPitScoutingData } from "@/core/lib/pitScoutingUtils";
-import { clearAllTBACache } from "@/core/lib/tbaCache";
+import { useCallback } from 'react';
+import { toast } from 'sonner';
+import { clearAllScoutingData } from '@/core/db/database';
+import { clearGamificationData as clearGameData } from '@/game-template/gamification';
+import { clearAllPitScoutingData } from '@/core/lib/pitScoutingUtils';
+import { clearAllTBACache } from '@/core/lib/tbaCache';
 
 export const useDataCleaning = (
   refreshData: () => Promise<void>,
@@ -13,17 +13,17 @@ export const useDataCleaning = (
   const handleClearScoutingData = useCallback(async () => {
     try {
       await clearAllScoutingData();
-      localStorage.setItem("scoutingData", JSON.stringify({ data: [] }));
+      localStorage.setItem('scoutingData', JSON.stringify({ data: [] }));
 
       await refreshData();
       window.dispatchEvent(new Event('dataChanged'));
-      toast.success("Cleared all scouting data");
+      toast.success('Cleared all scouting data');
     } catch (error) {
-      console.error("Error clearing scouting data:", error);
-      localStorage.setItem("scoutingData", JSON.stringify({ data: [] }));
+      console.error('Error clearing scouting data:', error);
+      localStorage.setItem('scoutingData', JSON.stringify({ data: [] }));
       await refreshData();
       window.dispatchEvent(new Event('dataChanged'));
-      toast.success("Cleared all scouting data");
+      toast.success('Cleared all scouting data');
     }
   }, [refreshData]);
 
@@ -32,10 +32,10 @@ export const useDataCleaning = (
       await clearAllPitScoutingData();
       await refreshData();
       window.dispatchEvent(new Event('dataChanged'));
-      toast.success("Cleared all pit scouting data");
+      toast.success('Cleared all pit scouting data');
     } catch (error) {
-      console.error("Error clearing pit scouting data:", error);
-      toast.error("Failed to clear pit scouting data");
+      console.error('Error clearing pit scouting data:', error);
+      toast.error('Failed to clear pit scouting data');
     }
   }, [refreshData]);
 
@@ -43,46 +43,47 @@ export const useDataCleaning = (
     try {
       await clearGameData();
 
-      localStorage.removeItem("scoutsList");
-      localStorage.removeItem("currentScout");
-      localStorage.removeItem("scoutName");
+      localStorage.removeItem('scoutsList');
+      localStorage.removeItem('currentScout');
+      localStorage.removeItem('scoutName');
 
       window.dispatchEvent(new CustomEvent('scoutDataCleared'));
       window.dispatchEvent(new Event('dataChanged'));
 
       await refreshData();
-      toast.success("Cleared all scout profile data");
-      console.log("ClearDataPage - Scout profile data cleared successfully");
+      toast.success('Cleared all scout profile data');
+      console.log('ClearDataPage - Scout profile data cleared successfully');
     } catch (error) {
-      console.error("Error clearing scout profile data:", error);
-      toast.error("Failed to clear scout profile data");
+      console.error('Error clearing scout profile data:', error);
+      toast.error('Failed to clear scout profile data');
     }
   }, [refreshData]);
 
   const handleClearMatchData = useCallback(async () => {
-    localStorage.setItem("matchData", "");
+    localStorage.setItem('matchData', '');
     await clearAllTBACache();
     if (updateMatchData) {
       updateMatchData(null);
     }
     window.dispatchEvent(new Event('dataChanged'));
-    toast.success("Cleared match schedule data");
+    toast.success('Cleared match schedule data');
   }, [updateMatchData]);
 
   const handleClearApiData = useCallback(async () => {
     try {
       const allKeys = Object.keys(localStorage);
-      const apiKeys = allKeys.filter(key =>
-        key.includes('tba_') ||
-        key.startsWith('tba_') ||
-        key.includes('nexus_') ||
-        key.startsWith('nexus_') ||
-        key === 'matchData' ||
-        key === 'eventsList' ||
-        key === 'eventKey' ||
-        key.includes('matchResults_') ||
-        key.includes('stakesAwarded_') ||
-        key.includes('pit_assignments_')
+      const apiKeys = allKeys.filter(
+        key =>
+          key.includes('tba_') ||
+          key.startsWith('tba_') ||
+          key.includes('nexus_') ||
+          key.startsWith('nexus_') ||
+          key === 'matchData' ||
+          key === 'eventsList' ||
+          key === 'eventKey' ||
+          key.includes('matchResults_') ||
+          key.includes('stakesAwarded_') ||
+          key.includes('pit_assignments_')
       );
 
       console.log('Clearing API data keys:', apiKeys);
@@ -97,14 +98,14 @@ export const useDataCleaning = (
       window.dispatchEvent(new Event('dataChanged'));
       toast.success(`Cleared all API data (${apiKeys.length} items)`);
     } catch (error) {
-      console.error("Error clearing API data:", error);
-      toast.error("Failed to clear API data");
+      console.error('Error clearing API data:', error);
+      toast.error('Failed to clear API data');
     }
   }, [refreshData]);
 
   const handleClearAllData = useCallback(async () => {
     try {
-      console.log("localStorage before clearing:", Object.keys(localStorage));
+      console.log('localStorage before clearing:', Object.keys(localStorage));
 
       await clearAllScoutingData();
       await clearAllPitScoutingData();
@@ -113,7 +114,7 @@ export const useDataCleaning = (
 
       localStorage.clear();
 
-      console.log("localStorage after clearing:", Object.keys(localStorage));
+      console.log('localStorage after clearing:', Object.keys(localStorage));
 
       resetStats();
 
@@ -121,13 +122,12 @@ export const useDataCleaning = (
       window.dispatchEvent(new CustomEvent('allDataCleared'));
       window.dispatchEvent(new Event('dataChanged'));
 
-      toast.success("Cleared all data - complete clean slate", {
-        description: "All stored data has been permanently removed from this device."
+      toast.success('Cleared all data - complete clean slate', {
+        description: 'All stored data has been permanently removed from this device.',
       });
-
     } catch (error) {
-      console.error("Error clearing all data:", error);
-      toast.error("Failed to clear all data");
+      console.error('Error clearing all data:', error);
+      toast.error('Failed to clear all data');
     }
   }, [resetStats]);
 

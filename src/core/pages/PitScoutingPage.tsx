@@ -1,15 +1,15 @@
-import { Button } from "@/core/components/ui/button";
-import { Alert, AlertDescription } from "@/core/components/ui/alert";
+import { Button } from '@/core/components/ui/button';
+import { Alert, AlertDescription } from '@/core/components/ui/alert';
 import {
   BasicInformation,
   RobotPhotoSection,
   TechnicalSpecifications,
   AdditionalNotes,
   GameSpecificQuestionsPlaceholder,
-} from "@/core/components/pit-scouting";
-import { usePitScoutingForm } from "@/core/hooks/usePitScoutingForm";
-import { useGame } from "@/core/contexts/GameContext";
-import { Save, AlertCircle, CheckCircle } from "lucide-react";
+} from '@/core/components/pit-scouting';
+import { usePitScoutingForm } from '@/core/hooks/usePitScoutingForm';
+import { useGame } from '@/core/contexts/GameContext';
+import { Save, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface PitScoutingPageProps {
   /**
@@ -26,11 +26,11 @@ interface PitScoutingPageProps {
 
 export function PitScoutingPage({
   onSubmitSuccess,
-  submitButtonText = "Save Pit Scouting Data",
+  submitButtonText = 'Save Pit Scouting Data',
 }: PitScoutingPageProps) {
   const { ui } = useGame();
   const PitScoutingQuestions = ui?.PitScoutingQuestions;
-  
+
   const {
     formState,
     setTeamNumber,
@@ -93,10 +93,7 @@ export function PitScoutingPage({
           isLoading={isLoading}
         />
 
-        <RobotPhotoSection
-          robotPhoto={formState.robotPhoto}
-          onRobotPhotoChange={setRobotPhoto}
-        />
+        <RobotPhotoSection robotPhoto={formState.robotPhoto} onRobotPhotoChange={setRobotPhoto} />
 
         <TechnicalSpecifications
           weight={formState.weight}
@@ -122,15 +119,9 @@ export function PitScoutingPage({
 
         <AdditionalNotes notes={formState.notes} onNotesChange={setNotes} />
 
-
         {/* Submit Button */}
         <div className="mx-auto max-w-2xl">
-          <Button
-            onClick={onSubmit}
-            disabled={isLoading}
-            className="w-full"
-            size="lg"
-          >
+          <Button onClick={onSubmit} disabled={isLoading} className="w-full" size="lg">
             <Save className="mr-2 h-5 w-5" />
             {submitButtonText}
           </Button>

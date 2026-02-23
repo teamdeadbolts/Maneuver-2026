@@ -1,9 +1,9 @@
 /**
  * Generic Dexie database layer for maneuver-core
- * 
+ *
  * This is the year-agnostic database infrastructure.
  * Game-specific data goes in the `gameData` field as JSON.
- * 
+ *
  * Two separate databases:
  * 1. MatchScoutingDB - Match scouting entries
  * 2. PitScoutingDB - Pit scouting/robot capabilities
@@ -19,7 +19,10 @@ import type {
   PitScoutingStats,
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api';
+const API_PORT = 3000;
+const url = new URL(window.location.origin);
+url.port = API_PORT.toString();
+const API_BASE = import.meta.env.VITE_API_BASE_URL || `${url.toString()}api`;
 
 export async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -45,9 +48,6 @@ export async function apiRequest<T>(path: string, options?: RequestInit): Promis
 /**
  * Main scouting database - stores match scouting entries
  */
-
-
-
 
 // ============================================================================
 // SCOUTING DATA CRUD OPERATIONS
@@ -92,7 +92,10 @@ export const loadAllScoutingEntries = async <TGameData = Record<string, unknown>
 export const loadScoutingEntriesByTeam = async <TGameData = Record<string, unknown>>(
   teamNumber: number
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify({ teamNumbers: [teamNumber] }) });
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, {
+    method: 'POST',
+    body: JSON.stringify({ teamNumbers: [teamNumber] }),
+  });
 };
 
 /**
@@ -101,7 +104,10 @@ export const loadScoutingEntriesByTeam = async <TGameData = Record<string, unkno
 export const loadScoutingEntriesByMatch = async <TGameData = Record<string, unknown>>(
   matchNumber: number
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify({ matchNumbers: [matchNumber] }) });
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, {
+    method: 'POST',
+    body: JSON.stringify({ matchNumbers: [matchNumber] }),
+  });
 };
 
 /**
@@ -110,9 +116,10 @@ export const loadScoutingEntriesByMatch = async <TGameData = Record<string, unkn
 export const loadScoutingEntriesByEvent = async <TGameData = Record<string, unknown>>(
   eventKey: string
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/events/${eventKey}/matches`, { method: 'GET' });
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/events/${eventKey}/matches`, {
+    method: 'GET',
+  });
 };
-
 
 /**
  * Load scouting entries for a team at a specific event
@@ -122,7 +129,10 @@ export const loadScoutingEntriesByTeamAndEvent = async <TGameData = Record<strin
   eventKey: string
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
   const filters: QueryFilters = { teamNumbers: [teamNumber], eventKeys: [eventKey] };
-  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify(filters) });
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });
 };
 
 /**
@@ -134,8 +144,16 @@ export const findExistingScoutingEntry = async <TGameData = Record<string, unkno
   allianceColor: 'red' | 'blue',
   eventKey: string
 ): Promise<ScoutingEntryBase<TGameData> | undefined> => {
-  const filters: QueryFilters = { matchNumbers: [matchNumber], teamNumbers: [teamNumber], alliances: [allianceColor], eventKeys: [eventKey] };
-  const entries = await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify(filters) });
+  const filters: QueryFilters = {
+    matchNumbers: [matchNumber],
+    teamNumbers: [teamNumber],
+    alliances: [allianceColor],
+    eventKeys: [eventKey],
+  };
+  const entries = await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });
   return entries.length > 0 ? entries[0] : undefined;
 };
 
@@ -148,9 +166,12 @@ export const updateScoutingEntryWithCorrection = async <TGameData = Record<strin
   correctionNotes: string,
   correctedBy: string
 ): Promise<void> => {
-  const entries = await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify({ ids: [id] }) });
+  const entries = await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, {
+    method: 'POST',
+    body: JSON.stringify({ ids: [id] }),
+  });
   const existingEntry = entries[0];
-  
+
   if (!existingEntry) {
     throw new Error('Entry not found for correction');
   }
@@ -163,7 +184,7 @@ export const updateScoutingEntryWithCorrection = async <TGameData = Record<strin
     lastCorrectedAt: Date.now(),
     lastCorrectedBy: correctedBy,
     correctionNotes,
-  }
+  };
 
   return saveScoutingEntry(updatedEntry);
 };
@@ -176,8 +197,8 @@ export const deleteScoutingEntry = async (id: string): Promise<void> => {
 };
 
 export const deleteScoutingEntriesByEvent = async (eventKey: string): Promise<void> => {
-  await apiRequest(`/events/${eventKey}/matches`, { method: 'DELETE' });
-}
+  await apiRequest(`/matches/events/${eventKey}`, { method: 'DELETE' });
+};
 
 /**
  * Clear all scouting data
@@ -203,7 +224,10 @@ export const getDBStats = async (): Promise<DBStats> => {
 export const queryScoutingEntries = async <TGameData = Record<string, unknown>>(
   filters: QueryFilters
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, { method: 'POST', body: JSON.stringify(filters) });
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/query`, {
+    method: 'POST',
+    body: JSON.stringify(filters),
+  });
 };
 
 // ============================================================================
@@ -250,51 +274,48 @@ export const importScoutingData = async <TGameData = Record<string, unknown>>(
 // PIT SCOUTING OPERATIONS
 // ============================================================================
 
-export const savePitScoutingEntry = async (
-  entry: PitScoutingEntryBase
-): Promise<void> => {
+export const savePitScoutingEntry = async (entry: PitScoutingEntryBase): Promise<void> => {
   await apiRequest('/pit', {
     method: 'POST',
     body: JSON.stringify(entry),
   });
 };
 
-export const savePitScoutingEntries = async (
-  entries: PitScoutingEntryBase[]
-): Promise<void> => {
+export const savePitScoutingEntries = async (entries: PitScoutingEntryBase[]): Promise<void> => {
   await apiRequest('/pit/bulk', {
     method: 'POST',
     body: JSON.stringify(entries),
   });
-}
+};
 
-export const loadAllPitScoutingEntries = async (): Promise<
-  PitScoutingEntryBase[]
-> => {
-  return await apiRequest<PitScoutingEntryBase[]>('/pit', { method: 'GET' });
+export const loadAllPitScoutingEntries = async (): Promise<PitScoutingEntryBase[]> => {
+  return await apiRequest<PitScoutingEntryBase[]>('/pit/query', { method: 'GET' });
 };
 
 export const loadPitScoutingByTeam = async (
   teamNumber: number
 ): Promise<PitScoutingEntryBase[]> => {
-  return await apiRequest<PitScoutingEntryBase[]>(`/pit/team/${teamNumber}`, { method: 'GET' });
+  return await apiRequest<PitScoutingEntryBase[]>(`/pit/query`, {
+    method: 'POST',
+    body: JSON.stringify({ teamNumber }),
+  });
 };
 
 export const loadPitScoutingByTeamAndEvent = async (
   teamNumber: number,
   eventKey: string
 ): Promise<PitScoutingEntryBase | undefined> => {
-  const results = await apiRequest<PitScoutingEntryBase[]>(
-    `/pit/query?teamNumber=${teamNumber}&eventKey=${eventKey.toLowerCase()}`,
-    { method: 'GET' }
-  );
+  const results = await apiRequest<PitScoutingEntryBase[]>(`/pit/query`, {
+    method: 'POST',
+    body: JSON.stringify({ teamNumber, eventKey }),
+  });
   return results[0];
 };
 
-export const loadPitScoutingByEvent = async (
-  eventKey: string
-): Promise<PitScoutingEntryBase[]> => {
-  return await apiRequest<PitScoutingEntryBase[]>(`/pit/event/${eventKey.toLowerCase()}`, { method: 'GET' });
+export const loadPitScoutingByEvent = async (eventKey: string): Promise<PitScoutingEntryBase[]> => {
+  return await apiRequest<PitScoutingEntryBase[]>(`/pit/event/${eventKey.toLowerCase()}`, {
+    method: 'GET',
+  });
 };
 
 export const deletePitScoutingEntry = async (id: string): Promise<void> => {
@@ -306,8 +327,8 @@ export const clearAllPitScoutingData = async (): Promise<void> => {
 };
 
 export const deletePitScoutingEntriesByEvent = async (eventKey: string): Promise<void> => {
-  await apiRequest(`/pit/event/${eventKey.toLowerCase()}`, { method: 'DELETE' });
-}
+  await apiRequest(`/pit/events/${eventKey.toLowerCase()}`, { method: 'DELETE' });
+};
 
 export const getPitScoutingStats = async (): Promise<PitScoutingStats> => {
   return await apiRequest<PitScoutingStats>('/pit/stats', { method: 'GET' });

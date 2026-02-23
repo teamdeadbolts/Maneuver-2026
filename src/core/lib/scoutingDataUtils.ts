@@ -4,7 +4,7 @@
  */
 
 import type { ScoutingEntryBase } from '@/types/scouting-entry';
-import { apiRequest } from '@/core/db/database';
+import { apiRequest, loadAllScoutingEntries } from '@/core/db/database';
 
 /**
  * Normalize event key for consistent storage and comparison
@@ -26,30 +26,33 @@ export const generateDeterministicEntryId = (
   const match = String(matchKey).toLowerCase().trim();
   const team = String(teamNumber).trim();
   const alliance = allianceColor.toLowerCase().trim();
-  
+
   return `${event}::${match}::${team}::${alliance}`;
 };
 
 export const generateDataFingerprint = (entry: ScoutingEntryBase): string => {
-  const sortedEntries = Object.entries(entry.gameData || {})
-    .sort(([keyA], [keyB]) => keyA.localeCompare(keyB));
-  
+  const sortedEntries = Object.entries(entry.gameData || {}).sort(([keyA], [keyB]) =>
+    keyA.localeCompare(keyB)
+  );
+
   const dataString = sortedEntries
     .map(([key, value]) => `${key}:${JSON.stringify(value)}`)
     .join('|');
-  
+
   let hash = 2166136261;
   for (let i = 0; i < dataString.length; i++) {
     hash ^= dataString.charCodeAt(i);
     hash = Math.imul(hash, 16777619);
   }
-  
+
   return (hash >>> 0).toString(36);
 };
 
-const parseMatchKeyForSort = (matchKey: string): { compOrder: number; setNumber: number; matchNumber: number; raw: string } => {
+const parseMatchKeyForSort = (
+  matchKey: string
+): { compOrder: number; setNumber: number; matchNumber: number; raw: string } => {
   const raw = String(matchKey || '').trim();
-  const keyPart = raw.includes('_') ? (raw.split('_')[1] || raw) : raw;
+  const keyPart = raw.includes('_') ? raw.split('_')[1] || raw : raw;
 
   const qm = keyPart.match(/^qm(\d+)$/i);
   if (qm && qm[1]) {
@@ -110,15 +113,16 @@ const compareMatchKeys = (a: string, b: string): number => {
  * here to avoid downloading the entire history of the team.
  */
 export const loadScoutingData = async (): Promise<ScoutingEntryBase[]> => {
-  try {
-    const entries = await apiRequest<ScoutingEntryBase[]>('/matches', {
-      method: 'GET'
-    });
-    return entries;
-  } catch (error) {
-    console.error('Error loading scouting data from API:', error);
-    return [];
-  }
+  // try {
+  //   const entries = await apiRequest<ScoutingEntryBase[]>('/matches', {
+  //     method: 'GET'
+  //   });
+  //   return entries;
+  // } catch (error) {
+  //   console.error('Error loading scouting data from API:', error);
+  //   return [];
+  // }
+  return await loadAllScoutingEntries();
 };
 
 /**
@@ -148,25 +152,25 @@ export const getDataSummary = async (): Promise<{
   events: string[];
 }> => {
   const entries = await loadScoutingData();
-  
+
   const teams = new Set<number>();
   const matches = new Set<string>();
   const scouts = new Set<string>();
   const events = new Set<string>();
-  
+
   entries.forEach(entry => {
     if (entry.teamNumber) teams.add(entry.teamNumber);
     if (entry.matchKey) matches.add(entry.matchKey);
     if (entry.scoutName) scouts.add(entry.scoutName);
     if (entry.eventKey) events.add(entry.eventKey);
   });
-  
+
   return {
     totalEntries: entries.length,
     teams: Array.from(teams).sort((a, b) => a - b),
     matches: Array.from(matches).sort(compareMatchKeys),
     scouts: Array.from(scouts).sort(),
-    events: Array.from(events).sort()
+    events: Array.from(events).sort(),
   };
 };
 
@@ -194,24 +198,24 @@ export interface ConflictDetectionResult {
  * Flattens nested objects (auto, teleop, endgame) for detailed field-by-field comparison
  */
 export const computeChangedFields = (
-  localEntry: ScoutingEntryBase, 
+  localEntry: ScoutingEntryBase,
   incomingEntry: ScoutingEntryBase
 ): Array<{ field: string; localValue: unknown; incomingValue: unknown }> => {
   const changes: Array<{ field: string; localValue: unknown; incomingValue: unknown }> = [];
-  
+
   const localData = localEntry.gameData || {};
   const incomingData = incomingEntry.gameData || {};
-  
+
   /**
    * Recursively flatten nested objects into dot notation
    * e.g., { auto: { startPosition: 'Left' } } → { 'auto.startPosition': 'Left' }
    */
   const flattenObject = (obj: Record<string, unknown>, prefix = ''): Record<string, unknown> => {
     const flattened: Record<string, unknown> = {};
-    
+
     for (const [key, value] of Object.entries(obj)) {
       const fullKey = prefix ? `${prefix}.${key}` : key;
-      
+
       if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
         // Recursively flatten nested objects
         Object.assign(flattened, flattenObject(value as Record<string, unknown>, fullKey));
@@ -220,32 +224,29 @@ export const computeChangedFields = (
         flattened[fullKey] = value;
       }
     }
-    
+
     return flattened;
   };
-  
+
   const flattenedLocal = flattenObject(localData);
   const flattenedIncoming = flattenObject(incomingData);
-  
-  const allFields = new Set([
-    ...Object.keys(flattenedLocal),
-    ...Object.keys(flattenedIncoming)
-  ]);
-  
+
+  const allFields = new Set([...Object.keys(flattenedLocal), ...Object.keys(flattenedIncoming)]);
+
   for (const field of allFields) {
     const localValue = flattenedLocal[field];
     const incomingValue = flattenedIncoming[field];
-    
+
     // Skip if either value is null/undefined
     if (incomingValue === null || incomingValue === undefined) continue;
     if (localValue === null || localValue === undefined) continue;
-    
+
     // Compare values
     if (JSON.stringify(localValue) !== JSON.stringify(incomingValue)) {
       changes.push({ field, localValue, incomingValue });
     }
   }
-  
+
   return changes;
 };
 
@@ -277,7 +278,7 @@ export const detectConflicts = async (
       autoImport: [],
       autoReplace: [],
       batchReview: [],
-      conflicts: []
+      conflicts: [],
     };
   }
 };

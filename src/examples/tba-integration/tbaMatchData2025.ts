@@ -1,17 +1,17 @@
 // @ts-nocheck
 /**
  * TBA Match Data Utilities - 2025 REEFSCAPE
- * 
+ *
  * ⚠️ This file is YEAR-SPECIFIC for the 2025 REEFSCAPE game.
- * 
+ *
  * For generic TBA types used by the framework, see:
  * @see src/core/lib/tbaMatchData.ts
- * 
+ *
  * When implementing your game year:
  * 1. Copy this file to src/game-YYYY/tba/tbaMatchDataYYYY.ts
  * 2. Update types to match your game's TBA API response
  * 3. Modify parsing functions for your scoring system
- * 
+ *
  * This is a REFERENCE IMPLEMENTATION showing how to:
  * - Define game-specific TBA types
  * - Parse score breakdowns from TBA API
@@ -35,70 +35,136 @@ export interface TBAScoreBreakdown {
   teleopPoints: number;
   adjustPoints: number;
   foulPoints: number;
-  
+
   // Coral Scoring
-  autoCoralCount: number;  // Total auto coral (for reference/tiebreaker)
+  autoCoralCount: number; // Total auto coral (for reference/tiebreaker)
   autoCoralPoints: number;
-  teleopCoralCount: number;  // Total teleop coral
+  teleopCoralCount: number; // Total teleop coral
   teleopCoralPoints: number;
-  
+
   // Coral Placement by Level (Auto)
   autoReef: {
-    topRow: { nodeA: boolean; nodeB: boolean; nodeC: boolean; nodeD: boolean; 
-              nodeE: boolean; nodeF: boolean; nodeG: boolean; nodeH: boolean;
-              nodeI: boolean; nodeJ: boolean; nodeK: boolean; nodeL: boolean };
-    midRow: { nodeA: boolean; nodeB: boolean; nodeC: boolean; nodeD: boolean; 
-              nodeE: boolean; nodeF: boolean; nodeG: boolean; nodeH: boolean;
-              nodeI: boolean; nodeJ: boolean; nodeK: boolean; nodeL: boolean };
-    botRow: { nodeA: boolean; nodeB: boolean; nodeC: boolean; nodeD: boolean; 
-              nodeE: boolean; nodeF: boolean; nodeG: boolean; nodeH: boolean;
-              nodeI: boolean; nodeJ: boolean; nodeK: boolean; nodeL: boolean };
-    trough: number;  // L1 count
-    tba_topRowCount: number;  // Calculated count
+    topRow: {
+      nodeA: boolean;
+      nodeB: boolean;
+      nodeC: boolean;
+      nodeD: boolean;
+      nodeE: boolean;
+      nodeF: boolean;
+      nodeG: boolean;
+      nodeH: boolean;
+      nodeI: boolean;
+      nodeJ: boolean;
+      nodeK: boolean;
+      nodeL: boolean;
+    };
+    midRow: {
+      nodeA: boolean;
+      nodeB: boolean;
+      nodeC: boolean;
+      nodeD: boolean;
+      nodeE: boolean;
+      nodeF: boolean;
+      nodeG: boolean;
+      nodeH: boolean;
+      nodeI: boolean;
+      nodeJ: boolean;
+      nodeK: boolean;
+      nodeL: boolean;
+    };
+    botRow: {
+      nodeA: boolean;
+      nodeB: boolean;
+      nodeC: boolean;
+      nodeD: boolean;
+      nodeE: boolean;
+      nodeF: boolean;
+      nodeG: boolean;
+      nodeH: boolean;
+      nodeI: boolean;
+      nodeJ: boolean;
+      nodeK: boolean;
+      nodeL: boolean;
+    };
+    trough: number; // L1 count
+    tba_topRowCount: number; // Calculated count
     tba_midRowCount: number;
     tba_botRowCount: number;
   };
-  
+
   // Coral Placement by Level (Teleop)
   teleopReef: {
-    topRow: { nodeA: boolean; nodeB: boolean; nodeC: boolean; nodeD: boolean; 
-              nodeE: boolean; nodeF: boolean; nodeG: boolean; nodeH: boolean;
-              nodeI: boolean; nodeJ: boolean; nodeK: boolean; nodeL: boolean };
-    midRow: { nodeA: boolean; nodeB: boolean; nodeC: boolean; nodeD: boolean; 
-              nodeE: boolean; nodeF: boolean; nodeG: boolean; nodeH: boolean;
-              nodeI: boolean; nodeJ: boolean; nodeK: boolean; nodeL: boolean };
-    botRow: { nodeA: boolean; nodeB: boolean; nodeC: boolean; nodeD: boolean; 
-              nodeE: boolean; nodeF: boolean; nodeG: boolean; nodeH: boolean;
-              nodeI: boolean; nodeJ: boolean; nodeK: boolean; nodeL: boolean };
-    trough: number;  // L1 count
+    topRow: {
+      nodeA: boolean;
+      nodeB: boolean;
+      nodeC: boolean;
+      nodeD: boolean;
+      nodeE: boolean;
+      nodeF: boolean;
+      nodeG: boolean;
+      nodeH: boolean;
+      nodeI: boolean;
+      nodeJ: boolean;
+      nodeK: boolean;
+      nodeL: boolean;
+    };
+    midRow: {
+      nodeA: boolean;
+      nodeB: boolean;
+      nodeC: boolean;
+      nodeD: boolean;
+      nodeE: boolean;
+      nodeF: boolean;
+      nodeG: boolean;
+      nodeH: boolean;
+      nodeI: boolean;
+      nodeJ: boolean;
+      nodeK: boolean;
+      nodeL: boolean;
+    };
+    botRow: {
+      nodeA: boolean;
+      nodeB: boolean;
+      nodeC: boolean;
+      nodeD: boolean;
+      nodeE: boolean;
+      nodeF: boolean;
+      nodeG: boolean;
+      nodeH: boolean;
+      nodeI: boolean;
+      nodeJ: boolean;
+      nodeK: boolean;
+      nodeL: boolean;
+    };
+    trough: number; // L1 count
     tba_topRowCount: number;
     tba_midRowCount: number;
     tba_botRowCount: number;
   };
-  
+
   // Algae Scoring
   algaePoints: number;
-  netAlgaeCount: number;      // Net shots (auto + teleop combined)
-  wallAlgaeCount: number;     // Processor placements (auto + teleop combined)
-  
+  netAlgaeCount: number; // Net shots (auto + teleop combined)
+  wallAlgaeCount: number; // Processor placements (auto + teleop combined)
+
   // Auto Mobility
-  autoLineRobot1: "Yes" | "No";
-  autoLineRobot2: "Yes" | "No";
-  autoLineRobot3: "Yes" | "No";
+  autoLineRobot1: 'Yes' | 'No';
+  autoLineRobot2: 'Yes' | 'No';
+  autoLineRobot3: 'Yes' | 'No';
   autoMobilityPoints: number;
-  
+
   // Endgame
-  endGameRobot1: "DeepCage" | "ShallowCage" | "Parked" | "None";
-  endGameRobot2: "DeepCage" | "ShallowCage" | "Parked" | "None";
-  endGameRobot3: "DeepCage" | "ShallowCage" | "Parked" | "None";
+  endGameRobot1: 'DeepCage' | 'ShallowCage' | 'Parked' | 'None';
+  endGameRobot2: 'DeepCage' | 'ShallowCage' | 'Parked' | 'None';
+  endGameRobot3: 'DeepCage' | 'ShallowCage' | 'Parked' | 'None';
   endGameBargePoints: number;
-  
+
   // Bonuses & Achievements
   autoBonusAchieved: boolean;
   coralBonusAchieved: boolean;
   bargeBonusAchieved: boolean;
   coopertitionCriteriaMet: boolean;
-  
+
   // Penalties
   foulCount: number;
   techFoulCount: number;
@@ -106,7 +172,7 @@ export interface TBAScoreBreakdown {
   g410Penalty: boolean;
   g418Penalty: boolean;
   g428Penalty: boolean;
-  
+
   // Ranking Points
   rp: number;
 }
@@ -116,14 +182,14 @@ export interface TBAScoreBreakdown {
  */
 export interface TBAMatchData {
   match_number: number;
-  set_number: number;  // For playoff matches
-  comp_level: string;  // "qm" (quals), "qf", "sf", "f" (finals)
+  set_number: number; // For playoff matches
+  comp_level: string; // "qm" (quals), "qf", "sf", "f" (finals)
   event_key: string;
-  key: string;  // e.g., "2025mrcmp_f1m1"
+  key: string; // e.g., "2025mrcmp_f1m1"
   alliances: {
     red: {
       score: number;
-      team_keys: string[];  // ["frc1234", "frc5678", "frc9012"]
+      team_keys: string[]; // ["frc1234", "frc5678", "frc9012"]
       dq_team_keys: string[];
       surrogate_team_keys: string[];
     };
@@ -138,8 +204,8 @@ export interface TBAMatchData {
     red: TBAScoreBreakdown;
     blue: TBAScoreBreakdown;
   } | null;
-  winning_alliance: "red" | "blue" | "";
-  time: number;  // Unix timestamp
+  winning_alliance: 'red' | 'blue' | '';
+  time: number; // Unix timestamp
   actual_time: number;
   predicted_time: number;
   post_result_time: number;
@@ -165,23 +231,20 @@ export interface TBAMatchSimple {
 
 /**
  * Fetch detailed match data for a specific match from TBA
- * 
+ *
  * @param matchKey - TBA match key (e.g., '2025mrcmp_qm1')
  * @param apiKey - TBA API key
  * @returns Detailed match data with score breakdown
  */
-export async function fetchTBAMatchDetail(
-  matchKey: string,
-  apiKey: string
-): Promise<TBAMatchData> {
+export async function fetchTBAMatchDetail(matchKey: string, apiKey: string): Promise<TBAMatchData> {
   const url = `${TBA_BASE_URL}/match/${matchKey}`;
-  
+
   const response = await fetch(url, {
     headers: {
       'X-TBA-Auth-Key': apiKey,
     },
   });
-  
+
   if (!response.ok) {
     if (response.status === 401) {
       throw new Error('Invalid TBA API key');
@@ -191,14 +254,14 @@ export async function fetchTBAMatchDetail(
       throw new Error(`TBA API request failed: ${response.status}`);
     }
   }
-  
+
   const data = await response.json();
   return data as TBAMatchData;
 }
 
 /**
  * Fetch all matches for an event (simple format, no score breakdowns)
- * 
+ *
  * @param eventKey - TBA event key (e.g., '2025mrcmp')
  * @param apiKey - TBA API key
  * @returns Array of simplified match data
@@ -208,13 +271,13 @@ export async function fetchTBAEventMatches(
   apiKey: string
 ): Promise<TBAMatchSimple[]> {
   const url = `${TBA_BASE_URL}/event/${eventKey}/matches/simple`;
-  
+
   const response = await fetch(url, {
     headers: {
       'X-TBA-Auth-Key': apiKey,
     },
   });
-  
+
   if (!response.ok) {
     if (response.status === 401) {
       throw new Error('Invalid TBA API key');
@@ -224,7 +287,7 @@ export async function fetchTBAEventMatches(
       throw new Error(`TBA API request failed: ${response.status}`);
     }
   }
-  
+
   const data = await response.json();
   return data as TBAMatchSimple[];
 }
@@ -232,7 +295,7 @@ export async function fetchTBAEventMatches(
 /**
  * Fetch all detailed matches for an event (with score breakdowns)
  * Note: This makes one API call and gets all data at once
- * 
+ *
  * @param eventKey - TBA event key (e.g., '2025mrcmp')
  * @param apiKey - TBA API key
  * @returns Array of detailed match data
@@ -242,13 +305,13 @@ export async function fetchTBAEventMatchesDetailed(
   apiKey: string
 ): Promise<TBAMatchData[]> {
   const url = `${TBA_BASE_URL}/event/${eventKey}/matches`;
-  
+
   const response = await fetch(url, {
     headers: {
       'X-TBA-Auth-Key': apiKey,
     },
   });
-  
+
   if (!response.ok) {
     if (response.status === 401) {
       throw new Error('Invalid TBA API key');
@@ -258,7 +321,7 @@ export async function fetchTBAEventMatchesDetailed(
       throw new Error(`TBA API request failed: ${response.status}`);
     }
   }
-  
+
   const data = await response.json();
   return data as TBAMatchData[];
 }
@@ -270,7 +333,7 @@ export async function fetchTBAEventMatchesDetailed(
 /**
  * Extract team number from TBA team key
  * Converts "frc1234" to 1234
- * 
+ *
  * @param teamKey - TBA team key (e.g., "frc1234")
  * @returns Team number as integer
  */
@@ -281,7 +344,7 @@ export function extractTeamNumber(teamKey: string): number {
 /**
  * Extract team numbers from array of TBA team keys
  * Converts ["frc1", "frc2"] to [1, 2]
- * 
+ *
  * @param teamKeys - Array of TBA team keys
  * @returns Array of team numbers
  */
@@ -292,7 +355,7 @@ export function extractTeamNumbers(teamKeys: string[]): number[] {
 /**
  * Generate match key from event and match number
  * Attempts to follow TBA format
- * 
+ *
  * @param eventKey - Event key (e.g., '2025mrcmp')
  * @param matchNumber - Match number
  * @param compLevel - Competition level ('qm', 'qf', 'sf', 'f')
@@ -321,10 +384,10 @@ export function parseMatchKey(matchKey: string): {
   if (parts.length !== 2) {
     throw new Error(`Invalid match key format: ${matchKey}`);
   }
-  
+
   const eventKey = parts[0];
   const matchPart = parts[1];
-  
+
   // Extract comp level and match number
   // e.g., "qm1" -> compLevel="qm", matchNumber="1"
   // e.g., "f1m1" -> compLevel="f", matchNumber="1m1" (keep playoff format)
@@ -332,10 +395,10 @@ export function parseMatchKey(matchKey: string): {
   if (!match) {
     throw new Error(`Invalid match key format: ${matchKey}`);
   }
-  
+
   const compLevel = match[1];
   const matchNumber = match[2];
-  
+
   return { eventKey, compLevel, matchNumber };
 }
 
@@ -345,9 +408,11 @@ export function parseMatchKey(matchKey: string): {
  * @returns True if score breakdown exists
  */
 export function hasScoreBreakdown(match: TBAMatchData): boolean {
-  return match.score_breakdown !== null && 
-         match.score_breakdown !== undefined &&
-         match.score_breakdown.red !== undefined;
+  return (
+    match.score_breakdown !== null &&
+    match.score_breakdown !== undefined &&
+    match.score_breakdown.red !== undefined
+  );
 }
 
 /**
@@ -357,9 +422,9 @@ export function hasScoreBreakdown(match: TBAMatchData): boolean {
  */
 export function countAutoLine(breakdown: TBAScoreBreakdown): number {
   let count = 0;
-  if (breakdown.autoLineRobot1 === "Yes") count++;
-  if (breakdown.autoLineRobot2 === "Yes") count++;
-  if (breakdown.autoLineRobot3 === "Yes") count++;
+  if (breakdown.autoLineRobot1 === 'Yes') count++;
+  if (breakdown.autoLineRobot2 === 'Yes') count++;
+  if (breakdown.autoLineRobot3 === 'Yes') count++;
   return count;
 }
 
@@ -375,14 +440,14 @@ export function countEndgame(breakdown: TBAScoreBreakdown): {
   none: number;
 } {
   const counts = { deep: 0, shallow: 0, parked: 0, none: 0 };
-  
+
   [breakdown.endGameRobot1, breakdown.endGameRobot2, breakdown.endGameRobot3].forEach(status => {
-    if (status === "DeepCage") counts.deep++;
-    else if (status === "ShallowCage") counts.shallow++;
-    else if (status === "Parked") counts.parked++;
-    else if (status === "None") counts.none++;
+    if (status === 'DeepCage') counts.deep++;
+    else if (status === 'ShallowCage') counts.shallow++;
+    else if (status === 'Parked') counts.parked++;
+    else if (status === 'None') counts.none++;
   });
-  
+
   return counts;
 }
 
@@ -399,7 +464,7 @@ export function getMatchTypeName(compLevel: string): string {
     sf: 'Semi Finals',
     f: 'Finals',
   };
-  
+
   return types[compLevel] || compLevel.toUpperCase();
 }
 
@@ -410,7 +475,7 @@ export function getMatchTypeName(compLevel: string): string {
  */
 export function formatMatchName(match: TBAMatchData): string {
   const typeName = getMatchTypeName(match.comp_level);
-  
+
   if (match.comp_level === 'qm') {
     return `${typeName} ${match.match_number}`;
   } else {

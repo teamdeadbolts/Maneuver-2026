@@ -67,21 +67,10 @@ export interface PitScoutingData {
 }
 
 // Drivetrain options
-export const DRIVETRAIN_OPTIONS = [
-  "Swerve Drive",
-  "Tank Drive",
-  "Mecanum Drive",
-  "Other"
-] as const;
+export const DRIVETRAIN_OPTIONS = ['Swerve Drive', 'Tank Drive', 'Mecanum Drive', 'Other'] as const;
 
 // Programming language options
-export const PROGRAMMING_LANGUAGES = [
-  "Java",
-  "C++",
-  "Python",
-  "LabVIEW",
-  "Other"
-] as const;
+export const PROGRAMMING_LANGUAGES = ['Java', 'C++', 'Python', 'LabVIEW', 'Other'] as const;
 
-export type DrivetrainType = typeof DRIVETRAIN_OPTIONS[number];
-export type ProgrammingLanguageType = typeof PROGRAMMING_LANGUAGES[number];
+export type DrivetrainType = (typeof DRIVETRAIN_OPTIONS)[number];
+export type ProgrammingLanguageType = (typeof PROGRAMMING_LANGUAGES)[number];

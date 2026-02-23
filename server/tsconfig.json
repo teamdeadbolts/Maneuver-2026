@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "moduleResolution": "nodenext",
-    "rootDir": "./src",
+    "rootDir": "..",
     "outDir": "./dist",
     "module": "nodenext",
     "target": "esnext",
@@ -17,8 +17,12 @@
     "isolatedModules": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/shared/*": ["../shared/*"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "prisma.config.ts"]
+  "include": ["src/**/*", "../shared/**/*"],
+  "exclude": ["node_modules", "dist", "prisma.config.ts"],
 }

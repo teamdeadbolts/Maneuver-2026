@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef } from "react";
-import { CANVAS_CONSTANTS } from "../lib/canvasConstants";
-import { drawTeamNumbers } from "../lib/canvasUtils";
+import { useCallback, useEffect, useRef } from 'react';
+import { CANVAS_CONSTANTS } from '../lib/canvasConstants';
+import { drawTeamNumbers } from '../lib/canvasUtils';
 
 // Global reference for background image (no longer needed for erasing, but kept for compatibility)
 let globalBackgroundImage: HTMLImageElement | null = null;
@@ -40,7 +40,7 @@ export const useCanvasSetup = ({
   fullscreenRef,
   selectedTeams = [],
   onCanvasReady,
-  onDimensionsChange
+  onDimensionsChange,
 }: UseCanvasSetupProps) => {
   const backgroundImageRef = useRef<HTMLImageElement | null>(null);
   const setupTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -75,7 +75,6 @@ export const useCanvasSetup = ({
         if (isFullscreen) {
           const viewportHeight = window.innerHeight;
           const viewportWidth = window.innerWidth;
-
 
           const isControlsVisible = !hideControls;
 
@@ -158,7 +157,21 @@ export const useCanvasSetup = ({
       };
       img.src = fieldImagePath;
     }, delay);
-  }, [fieldImagePath, currentStageId, isFullscreen, hideControls, isMobile, backgroundCanvasRef, overlayCanvasRef, drawingCanvasRef, containerRef, fullscreenRef, onCanvasReady, onDimensionsChange, selectedTeams]);
+  }, [
+    fieldImagePath,
+    currentStageId,
+    isFullscreen,
+    hideControls,
+    isMobile,
+    backgroundCanvasRef,
+    overlayCanvasRef,
+    drawingCanvasRef,
+    containerRef,
+    fullscreenRef,
+    onCanvasReady,
+    onDimensionsChange,
+    selectedTeams,
+  ]);
 
   // Re-draw overlay when teams change
   useEffect(() => {
@@ -173,7 +186,7 @@ export const useCanvasSetup = ({
 
   useEffect(() => {
     setupCanvas();
-    
+
     // Extra recalculation after exiting fullscreen to ensure container dimensions are correct
     if (!isFullscreen) {
       const timer = setTimeout(() => setupCanvas(), 200);
@@ -211,6 +224,6 @@ export const useCanvasSetup = ({
   return {
     backgroundImageRef,
     setupCanvas,
-    clearCanvas
+    clearCanvas,
   };
 };

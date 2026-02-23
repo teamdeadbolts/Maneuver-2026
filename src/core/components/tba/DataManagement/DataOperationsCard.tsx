@@ -1,17 +1,14 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/core/components/ui/card";
-import { Button } from "@/core/components/ui/button";
-import { Alert, AlertDescription } from "@/core/components/ui/alert";
 import {
-  Download,
-  Loader2,
-  MapPin,
-  Bug,
-  Database,
-  Trophy,
-  Users,
-  AlertCircle,
-} from 'lucide-react';
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/core/components/ui/card';
+import { Button } from '@/core/components/ui/button';
+import { Alert, AlertDescription } from '@/core/components/ui/alert';
+import { Download, Loader2, MapPin, Bug, Database, Trophy, Users, AlertCircle } from 'lucide-react';
 import { type TBADataType } from '../EventConfiguration/DataTypeSelector';
 
 interface DataOperationsCardProps {
@@ -243,9 +240,7 @@ export const DataOperationsCard: React.FC<DataOperationsCardProps> = ({
           <dataTypeInfo.icon className="h-5 w-5" />
           {dataTypeInfo.title}
         </CardTitle>
-        <CardDescription>
-          {dataTypeInfo.description}
-        </CardDescription>
+        <CardDescription>{dataTypeInfo.description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Requirements Check */}
@@ -267,11 +262,11 @@ export const DataOperationsCard: React.FC<DataOperationsCardProps> = ({
             <p>{useServerProxy ? '• Uses server-side TBA API key' : '• Requires TBA API Key'}</p>
           )}
           {dataTypeInfo.requiresNexus && (
-            <p>{useServerProxy ? '• Uses server-side Nexus API key' : '• Requires Nexus API Key'}</p>
+            <p>
+              {useServerProxy ? '• Uses server-side Nexus API key' : '• Requires Nexus API Key'}
+            </p>
           )}
-          {dataTypeInfo.requiresEvent && (
-            <p>• Requires Event Key</p>
-          )}
+          {dataTypeInfo.requiresEvent && <p>• Requires Event Key</p>}
         </div>
       </CardContent>
     </Card>
