@@ -11,10 +11,12 @@
  * - Adding new stats means editing one file (calculations.ts)
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAllMatches } from "./useAllMatches";
 import { calculateTeamStats } from "@/game-template/calculations";
 import { calculateFuelOPRHybrid } from "@/game-template/fuelOpr";
+import { getCachedCOPREventKeys, getCachedEventCOPRs } from "@/core/lib/tba/coprUtils";
+import { getCachedTBAEventKeys, getCachedTBAEventMatches } from "@/core/lib/tbaCache";
 import type { TeamStats } from "@/core/types/team-stats";
 import type { ScoutingEntry } from "@/game-template/scoring";
 import type { TBAMatchData } from "@/core/lib/tbaMatchData";
@@ -34,11 +36,21 @@ export interface UseAllTeamStatsResult {
  */
 export const useAllTeamStats = (eventKey?: string): UseAllTeamStatsResult => {
     const { matches, isLoading, error } = useAllMatches(eventKey);
+    const [cachedOnlyTeamStats, setCachedOnlyTeamStats] = useState<TeamStats[]>([]);
+    const [isCacheLoading, setIsCacheLoading] = useState(false);
 
-    const teamStats = useMemo(() => {
+    const scoutedTeamStats = useMemo(() => {
         if (!matches || matches.length === 0) return [];
 
         const fuelOprByEventTeam = buildFuelOprMap(matches);
+
+        const coprEventKeys = eventKey
+            ? [eventKey]
+            : [...new Set(getCachedCOPREventKeys())];
+
+        const coprByEvent = new Map(
+            coprEventKeys.map(key => [key, getCachedEventCOPRs(key)] as const)
+        );
 
         // Group matches by team + event
         const matchesByTeam = matches.reduce((acc, match) => {
@@ -63,6 +75,7 @@ export const useAllTeamStats = (eventKey?: string): UseAllTeamStatsResult => {
         const stats: TeamStats[] = Object.values(matchesByTeam).map(({ teamNumber, eventKey, matches: teamMatches }) => {
             const calculated = calculateTeamStats(teamMatches);
             const fuelOpr = fuelOprByEventTeam.get(`${eventKey}::${teamNumber}`);
+            const copr = coprByEvent.get(eventKey)?.get(teamNumber);
 
             const baseStats = {
                 teamNumber,
@@ -76,15 +89,178 @@ export const useAllTeamStats = (eventKey?: string): UseAllTeamStatsResult => {
                 fuelTeleopOPR: fuelOpr?.teleopFuelOPR ?? (calculated.fuelTeleopOPR ?? 0),
                 fuelTotalOPR: fuelOpr?.totalFuelOPR ?? (calculated.fuelTotalOPR ?? 0),
                 fuelOprLambda: fuelOpr?.lambda ?? 0,
+                coprHubAutoPoints: copr?.hubAutoPoints,
+                coprHubTeleopPoints: copr?.hubTeleopPoints,
+                coprHubTotalPoints: copr?.hubTotalPoints,
+                coprAutoTowerPoints: copr?.autoTowerPoints,
+                coprEndgameTowerPoints: copr?.endgameTowerPoints,
+                coprTotalPoints: copr?.totalPoints,
+                coprTotalTeleopPoints: copr?.totalTeleopPoints,
+                coprTotalAutoPoints: copr?.totalAutoPoints,
+                coprTotalTowerPoints: copr?.totalTowerPoints,
             };
         });
 
         // Sort by team number
         return stats.sort((a, b) => a.teamNumber - b.teamNumber);
-    }, [matches]);
+    }, [matches, eventKey]);
 
-    return { teamStats, isLoading, error };
+    useEffect(() => {
+        let cancelled = false;
+
+        const loadCachedOnlyStats = async () => {
+            setIsCacheLoading(true);
+            try {
+                const tbaEventKeys = await getCachedTBAEventKeys();
+                const coprEventKeys = getCachedCOPREventKeys();
+                const eventKeys = eventKey
+                    ? [eventKey]
+                    : [...new Set([
+                        ...tbaEventKeys,
+                        ...coprEventKeys,
+                        ...scoutedTeamStats.map(team => team.eventKey).filter(Boolean),
+                    ])];
+
+                const existingTeamKeys = new Set(
+                    scoutedTeamStats.map(team => `${team.eventKey}::${team.teamNumber}`)
+                );
+
+                const supplemental: TeamStats[] = [];
+
+                for (const key of eventKeys) {
+                    const [tbaMatches, coprByTeam] = await Promise.all([
+                        getCachedTBAEventMatches(key, true),
+                        Promise.resolve(getCachedEventCOPRs(key)),
+                    ]);
+
+                    const hybrid = tbaMatches.length >= 2
+                        ? calculateFuelOPRHybrid(tbaMatches, { includePlayoffs: false })
+                        : null;
+
+                    const oprByTeam = new Map(
+                        (hybrid?.opr.teams ?? []).map(team => [team.teamNumber, team] as const)
+                    );
+
+                    const teamNumbers = new Set<number>([
+                        ...oprByTeam.keys(),
+                        ...coprByTeam.keys(),
+                    ]);
+
+                    for (const teamNumber of teamNumbers) {
+                        const teamKey = `${key}::${teamNumber}`;
+                        if (existingTeamKeys.has(teamKey)) {
+                            continue;
+                        }
+
+                        const teamStats = createEmptyTeamStats(teamNumber, key);
+                        const opr = oprByTeam.get(teamNumber);
+                        const copr = coprByTeam.get(teamNumber);
+
+                        teamStats.fuelAutoOPR = opr?.autoFuelOPR ?? 0;
+                        teamStats.fuelTeleopOPR = opr?.teleopFuelOPR ?? 0;
+                        teamStats.fuelTotalOPR = opr?.totalFuelOPR ?? 0;
+                        teamStats.fuelOprLambda = hybrid?.selectedLambda ?? 0;
+                        teamStats.coprHubAutoPoints = copr?.hubAutoPoints;
+                        teamStats.coprHubTeleopPoints = copr?.hubTeleopPoints;
+                        teamStats.coprHubTotalPoints = copr?.hubTotalPoints;
+                        teamStats.coprAutoTowerPoints = copr?.autoTowerPoints;
+                        teamStats.coprEndgameTowerPoints = copr?.endgameTowerPoints;
+                        teamStats.coprTotalPoints = copr?.totalPoints;
+                        teamStats.coprTotalTeleopPoints = copr?.totalTeleopPoints;
+                        teamStats.coprTotalAutoPoints = copr?.totalAutoPoints;
+                        teamStats.coprTotalTowerPoints = copr?.totalTowerPoints;
+
+                        supplemental.push(teamStats);
+                    }
+                }
+
+                if (!cancelled) {
+                    supplemental.sort((a, b) => a.teamNumber - b.teamNumber || a.eventKey.localeCompare(b.eventKey));
+                    setCachedOnlyTeamStats(supplemental);
+                }
+            } catch (loadError) {
+                console.error("Error loading cached-only team stats:", loadError);
+                if (!cancelled) {
+                    setCachedOnlyTeamStats([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsCacheLoading(false);
+                }
+            }
+        };
+
+        void loadCachedOnlyStats();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [eventKey, scoutedTeamStats]);
+
+    const teamStats = useMemo(() => {
+        if (cachedOnlyTeamStats.length === 0) {
+            return scoutedTeamStats;
+        }
+
+        const byKey = new Map<string, TeamStats>();
+
+        for (const team of scoutedTeamStats) {
+            byKey.set(`${team.eventKey}::${team.teamNumber}`, team);
+        }
+
+        for (const team of cachedOnlyTeamStats) {
+            const key = `${team.eventKey}::${team.teamNumber}`;
+            if (!byKey.has(key)) {
+                byKey.set(key, team);
+            }
+        }
+
+        return [...byKey.values()].sort((a, b) => a.teamNumber - b.teamNumber || a.eventKey.localeCompare(b.eventKey));
+    }, [scoutedTeamStats, cachedOnlyTeamStats]);
+
+    return { teamStats, isLoading: isLoading || isCacheLoading, error };
 };
+
+function createEmptyTeamStats(teamNumber: number, eventKey: string): TeamStats {
+    return {
+        teamNumber,
+        eventKey,
+        matchCount: 0,
+        totalPoints: 0,
+        autoPoints: 0,
+        teleopPoints: 0,
+        endgamePoints: 0,
+        overall: {
+            avgTotalPoints: 0,
+            totalPiecesScored: 0,
+            avgGamePiece1: 0,
+            avgGamePiece2: 0,
+        },
+        auto: {
+            avgPoints: 0,
+            avgGamePiece1: 0,
+            avgGamePiece2: 0,
+            mobilityRate: 0,
+            startPositions: [],
+        },
+        teleop: {
+            avgPoints: 0,
+            avgGamePiece1: 0,
+            avgGamePiece2: 0,
+        },
+        endgame: {
+            avgPoints: 0,
+            climbRate: 0,
+            parkRate: 0,
+        },
+        rawValues: {
+            totalPoints: [],
+            autoPoints: [],
+            teleopPoints: [],
+            endgamePoints: [],
+        },
+    };
+}
 
 function buildFuelOprMap(matches: ScoutingEntry[]): Map<string, {
     autoFuelOPR: number;

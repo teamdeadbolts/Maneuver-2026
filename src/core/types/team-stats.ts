@@ -58,6 +58,17 @@ export interface TeamStats {
         [key: string]: number[];  // Allow additional raw value arrays
     };
 
+    // TBA COPR metrics (optional; populated after match validation refresh)
+    coprHubAutoPoints?: number;
+    coprHubTeleopPoints?: number;
+    coprHubTotalPoints?: number;
+    coprAutoTowerPoints?: number;
+    coprEndgameTowerPoints?: number;
+    coprTotalPoints?: number;
+    coprTotalTeleopPoints?: number;
+    coprTotalAutoPoints?: number;
+    coprTotalTowerPoints?: number;
+
     // Allow additional game-specific fields
     [key: string]: any;
 }

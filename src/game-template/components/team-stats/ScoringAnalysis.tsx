@@ -17,8 +17,14 @@ export function ScoringAnalysis({
     statSections
 }: ScoringAnalysisProps) {
     const teamStatsTemplate = teamStats as TeamStatsTemplate;
+    const hasCoprData = [
+        teamStats.coprHubAutoPoints,
+        teamStats.coprHubTeleopPoints,
+        teamStats.coprAutoTowerPoints,
+        teamStats.coprEndgameTowerPoints,
+    ].some(value => typeof value === 'number');
     
-    if (teamStats.matchesPlayed === 0) {
+    if (teamStats.matchesPlayed === 0 && !hasCoprData) {
         return (
             <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
@@ -37,6 +43,13 @@ export function ScoringAnalysis({
 
     return (
         <div className="space-y-6 pb-6">
+            {teamStats.matchesPlayed === 0 && hasCoprData && (
+                <Card>
+                    <CardContent className="py-4 text-sm text-muted-foreground">
+                        No local match scouting entries for this team yet. Showing TBA COPR scoring metrics.
+                    </CardContent>
+                </Card>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {sections.map(section => (
                     <Card key={section.id}>
@@ -63,14 +76,16 @@ export function ScoringAnalysis({
             </div>
 
             {/* Teleop Paths Visualization */}
-            <Card>
-                <CardContent>
-                    <TeleopPathsVisualization 
-                        matchResults={teamStatsTemplate.matchResults || []}
-                        alliance="blue"
-                    />
-                </CardContent>
-            </Card>
+            {teamStats.matchesPlayed > 0 && (
+                <Card>
+                    <CardContent>
+                        <TeleopPathsVisualization 
+                            matchResults={teamStatsTemplate.matchResults || []}
+                            alliance="blue"
+                        />
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

@@ -362,6 +362,15 @@ export async function getTBACacheStats(): Promise<{
 }
 
 /**
+ * Get all cached TBA event keys.
+ * Useful when local scouting data is empty but cache-backed stats should still render.
+ */
+export async function getCachedTBAEventKeys(): Promise<string[]> {
+  const metadata = await db.metadata.toArray();
+  return [...new Set(metadata.map(item => item.eventKey).filter(Boolean))].sort();
+}
+
+/**
  * Prefetch and cache matches for an event
  * Useful for preloading data before going offline
  * 

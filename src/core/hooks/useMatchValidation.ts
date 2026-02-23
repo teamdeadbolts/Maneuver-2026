@@ -42,6 +42,7 @@ import {
 } from '@/core/lib/tbaCache';
 import { getAllMappedActionKeys, getAllMappedToggleKeys } from '@/game-template/game-schema';
 import { getEntriesByEvent } from '@/core/db/scoutingDatabase';
+import { fetchAndCacheEventCOPRs } from '@/core/lib/tba/coprUtils';
 import { toast } from 'sonner';
 
 // ============================================================================
@@ -133,6 +134,12 @@ export function useMatchValidation({
             // Fetch matches from TBA
             setProgress({ current: 0, total: 1, currentMatch: '', phase: 'fetching-tba' });
             await fetchEventMatches(eventKey, '');
+
+            try {
+                await fetchAndCacheEventCOPRs(eventKey, '');
+            } catch (coprError) {
+                console.warn(`[Validation] Failed to refresh COPRs for ${eventKey}:`, coprError);
+            }
 
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to load matches';

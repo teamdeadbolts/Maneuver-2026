@@ -8,6 +8,7 @@ const NEXUS_BASE_URL = 'https://frc.nexus/api/v1';
 const tbaAllowed = [
   /^\/events\/\d+(?:\/simple)?$/,
   /^\/event\/[a-z0-9]+\/matches(?:\/simple)?$/i,
+  /^\/event\/[a-z0-9]+\/coprs$/i,
   /^\/event\/[a-z0-9]+\/teams\/keys$/i,
   /^\/match\/[a-z0-9_]+$/i,
 ];

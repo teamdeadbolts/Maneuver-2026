@@ -19,7 +19,14 @@ export function StatOverview({
     rateSections: _rateSections,
     setActiveTab
 }: StatOverviewProps) {
-    if (teamStats.matchesPlayed === 0) {
+    const hasCoprData = [
+        teamStats.coprHubAutoPoints,
+        teamStats.coprHubTeleopPoints,
+        teamStats.coprAutoTowerPoints,
+        teamStats.coprEndgameTowerPoints,
+    ].some(value => typeof value === 'number');
+
+    if (teamStats.matchesPlayed === 0 && !hasCoprData) {
         return (
             <Card>
                 <CardContent className="flex flex-col items-center justify-center py-8">
@@ -47,6 +54,13 @@ export function StatOverview({
 
     return (
         <div className="space-y-6 pb-6">
+            {teamStats.matchesPlayed === 0 && hasCoprData && (
+                <Card>
+                    <CardContent className="py-4 text-sm text-muted-foreground">
+                        No local match scouting entries for this team yet. Showing TBA COPR metrics from match validation.
+                    </CardContent>
+                </Card>
+            )}
             {sections.map(section => (
                 <Card key={section.id}>
                     <CardHeader>

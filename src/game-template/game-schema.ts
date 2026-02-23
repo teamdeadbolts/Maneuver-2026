@@ -351,17 +351,24 @@ export const strategyColumns = {
         "rawValues.endgamePoints": { label: "Endgame Points", visible: true, numeric: true },
         "rawValues.scaledTotalFuel": { label: "Scaled Fuel (Total)", visible: true, numeric: true },
         "fuelTotalOPR": { label: "Fuel OPR (Total)", visible: true, numeric: true },
+        "coprTotalPoints": { label: "TBA COPR (Total Points)", visible: false, numeric: true },
+        "coprTotalTeleopPoints": { label: "TBA COPR (Teleop Points)", visible: false, numeric: true },
+        "coprTotalAutoPoints": { label: "TBA COPR (Auto Points)", visible: false, numeric: true },
+        "coprTotalTowerPoints": { label: "TBA COPR (Tower Points)", visible: false, numeric: true },
     },
     // Overall stats (use rawValues for user-selectable aggregation)
     overall: {
         "rawValues.totalFuel": { label: "Fuel Scored", visible: true, numeric: true },
         "rawValues.totalFuelPassed": { label: "Fuel Passed", visible: false, numeric: true },
+        "coprHubTotalPoints": { label: "TBA COPR (Hub Total)", visible: false, numeric: true },
     },
     // Auto stats (use rawValues for user-selectable aggregation)
     auto: {
         "rawValues.autoFuel": { label: "Auto Fuel", visible: true, numeric: true },
         "rawValues.scaledAutoFuel": { label: "Scaled Auto Fuel", visible: true, numeric: true },
         "fuelAutoOPR": { label: "Fuel OPR (Auto)", visible: true, numeric: true },
+        "coprHubAutoPoints": { label: "TBA COPR (Hub Auto)", visible: false, numeric: true },
+        "coprAutoTowerPoints": { label: "TBA COPR (Auto Tower)", visible: false, numeric: true },
         "autoShotOnTheMoveRate": { label: "Auto Shot On Move %", visible: true, numeric: true, percentage: true },
         "autoShotStationaryRate": { label: "Auto Shot Stationary %", visible: true, numeric: true, percentage: true },
         "autoClimbRate": { label: "Auto Climb %", visible: true, numeric: true, percentage: true },
@@ -374,6 +381,7 @@ export const strategyColumns = {
         "rawValues.teleopFuel": { label: "Teleop Fuel", visible: true, numeric: true },
         "rawValues.scaledTeleopFuel": { label: "Scaled Teleop Fuel", visible: true, numeric: true },
         "fuelTeleopOPR": { label: "Fuel OPR (Teleop)", visible: true, numeric: true },
+        "coprHubTeleopPoints": { label: "TBA COPR (Hub Teleop)", visible: false, numeric: true },
         "teleopShotOnTheMoveRate": { label: "Teleop Shot On Move %", visible: true, numeric: true, percentage: true },
         "teleopShotStationaryRate": { label: "Teleop Shot Stationary %", visible: true, numeric: true, percentage: true },
         "rawValues.teleopFuelPassed": { label: "Teleop Passed", visible: false, numeric: true },
@@ -389,6 +397,7 @@ export const strategyColumns = {
     // Endgame stats (climb rates are percentages, keep as-is)
     endgame: {
         "rawValues.endgameClimbStartTimeSec": { label: "Endgame Climb Start (s)", visible: true, numeric: true },
+        "coprEndgameTowerPoints": { label: "TBA COPR (Endgame Tower)", visible: false, numeric: true },
         "endgame.climbL1Rate": { label: "L1 Climb %", visible: false, numeric: true, percentage: true },
         "endgame.climbL2Rate": { label: "L2 Climb %", visible: true, numeric: true, percentage: true },
         "endgame.climbL3Rate": { label: "L3 Climb %", visible: true, numeric: true, percentage: true },
