@@ -5,8 +5,9 @@ services:
     restart: always
     ports:
       - "8080:8080"
-    volumes:
-      - ${PWD}/deploy/nginx-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    configs:
+      - source: nginx_config
+        target: /etc/nginx/conf.d/default.conf
     depends_on:
       - api
       - frontend
@@ -51,3 +52,7 @@ services:
 
 volumes:
   postgres_data:
+
+configs:
+  nginx_config:
+    file: ./deploy/nginx-gateway.conf
