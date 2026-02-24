@@ -22,6 +22,5 @@ COPY --from=builder /app/server/dist ./dist
 COPY --from=builder /app/server/prisma ./prisma
 COPY --from=builder /app/server/prisma.config.ts ./
 
-
 EXPOSE 3000
 CMD npx prisma db push && npm run start
