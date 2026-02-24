@@ -119,7 +119,7 @@ export const loadScoutingEntriesByMatch = async <TGameData = Record<string, unkn
 export const loadScoutingEntriesByEvent = async <TGameData = Record<string, unknown>>(
   eventKey: string
 ): Promise<ScoutingEntryBase<TGameData>[]> => {
-  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/event/${eventKey}`, {
+  return await apiRequest<ScoutingEntryBase<TGameData>[]>(`/matches/events/${eventKey}`, {
     method: 'GET',
   });
 };
@@ -316,7 +316,7 @@ export const loadPitScoutingByTeamAndEvent = async (
 };
 
 export const loadPitScoutingByEvent = async (eventKey: string): Promise<PitScoutingEntryBase[]> => {
-  return await apiRequest<PitScoutingEntryBase[]>(`/pit/event/${eventKey.toLowerCase()}`, {
+  return await apiRequest<PitScoutingEntryBase[]>(`/pit/events/${eventKey.toLowerCase()}`, {
     method: 'GET',
   });
 };

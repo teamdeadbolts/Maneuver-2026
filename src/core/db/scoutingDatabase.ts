@@ -4,7 +4,7 @@
  * Provides query functions to retrieve scouting data from IndexedDB.
  */
 
-import { apiRequest } from '@/core/db/database';
+import { loadScoutingEntriesByEvent } from '@/core/db/database';
 import type { ScoutingEntryBase } from '@/shared/types/scouting-entry';
 
 /**
@@ -23,10 +23,12 @@ export async function getEntriesByEvent(eventKey: string): Promise<
 > {
   try {
     // Query only entries for this specific eventKey
-    const entries = await apiRequest<Array<ScoutingEntryBase<Record<string, unknown>>>>(
-      `/events/${eventKey.toLowerCase()}/matches`,
-      { method: 'GET' }
-    );
+    // const entries = await apiRequest<Array<ScoutingEntryBase<Record<string, unknown>>>>(
+    //   `matches/events/${eventKey.toLowerCase()}`,
+    //   { method: 'GET' }
+    // );
+
+    const entries = await loadScoutingEntriesByEvent(eventKey);
 
     console.log(`[API] Found ${entries.length} entries for event ${eventKey}`);
 

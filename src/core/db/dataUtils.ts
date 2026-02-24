@@ -187,23 +187,7 @@ export const findExistingEntry = async (
     return undefined;
   }
 
-  // Construct query parameters
-  const params = new URLSearchParams({
-    matchNumber: matchNumber.toString(),
-    teamNumber: teamNumber.toString(),
-    allianceColor,
-  });
-
-  if (eventKey) {
-    params.append('eventKey', eventKey.toLowerCase());
-  }
-
-  // We use a specific 'find' endpoint or our generic query with a limit
-  const results = await apiRequest<ScoutingEntryBase[]>(`/matches/find?${params.toString()}`, {
-    method: 'GET',
-  });
-
-  return results.length > 0 ? results[0] : undefined;
+  return await findExistingEntry(matchNumber, teamNumber, allianceColor, eventKey);
 };
 
 /**

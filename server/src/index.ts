@@ -193,7 +193,7 @@ app.post('/api/pit/query', async (req, res) => {
 });
 
 
-app.get('/api/pit/event/:eventKey', async (req, res) => {
+app.get('/api/pit/events/:eventKey', async (req, res) => {
   try {
     const eventKey = req.params.eventKey;
     const entries = (await prisma.pitScouting.findMany({ where: { eventKey } })).map(entry => ({
