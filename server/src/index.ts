@@ -126,6 +126,17 @@ app.delete('/api/matches/events/:eventKey', async (req, res) => {
   }
 });
 
+app.get('/api/matches/events/:eventKey', async (req, res) => {
+  try {
+    const eventKey = req.params.eventKey;
+    const entries = await prisma.matchScouting.findMany({ where: { eventKey } });
+    res.json(entries);
+  } catch (error) {
+    console.error('Error fetching match scouting entries:', error);
+    res.status(500).json({ error: 'Failed to fetch match scouting entries' });
+  }
+});
+
 // Pit scouting routes
 app.post('/api/pit', async (req, res) => {
   try {    
