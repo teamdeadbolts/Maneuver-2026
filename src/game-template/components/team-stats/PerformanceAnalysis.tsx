@@ -36,6 +36,30 @@ export function PerformanceAnalysis({
         return typeof value === 'number' ? value : 0;
     };
 
+    const hasMatchBreakdown = (match: Record<string, unknown>) => {
+        if (match['brokeDown'] === true) return true;
+
+        const gameData = match['gameData'];
+        if (!gameData || typeof gameData !== 'object') return false;
+
+        const auto = (gameData as Record<string, unknown>)['auto'];
+        const teleop = (gameData as Record<string, unknown>)['teleop'];
+
+        const autoBrokenDownCount = auto && typeof auto === 'object'
+            ? Number((auto as Record<string, unknown>)['brokenDownCount'] || 0)
+            : 0;
+        const teleopBrokenDownCount = teleop && typeof teleop === 'object'
+            ? Number((teleop as Record<string, unknown>)['brokenDownCount'] || 0)
+            : 0;
+
+        return autoBrokenDownCount > 0 || teleopBrokenDownCount > 0;
+    };
+
+    const hasMatchNoShow = (match: Record<string, unknown>) => {
+        if (match['noShow'] === true) return true;
+        return typeof match['comment'] === 'string' && /no\s*show/i.test(match['comment']);
+    };
+
     // Extract match results for progression chart
     const matchResults = (teamStats as TeamStats & { matchResults?: any[] })?.matchResults || [];
     const compareMatchResults = compareStats ? (compareStats as TeamStats & { matchResults?: any[] })?.matchResults || [] : undefined;
@@ -47,7 +71,7 @@ export function PerformanceAnalysis({
         }
 
         return (
-            <div className="space-y-3 max-h-96 overflow-y-auto">
+            <div className="space-y-3">
                 {matchResults.map((match, index: number) => {
                     const eventKey = typeof match['eventKey'] === 'string' ? match['eventKey'] : null;
                     const matchNumber = String(match['matchNumber'] || '');
@@ -58,6 +82,8 @@ export function PerformanceAnalysis({
                     const teleopPoints = String(match['teleopPoints'] || 0);
                     const endgamePoints = String(match['endgamePoints'] || 0);
                     const comment = typeof match['comment'] === 'string' ? match['comment'] : "";
+                    const matchHasBreakdown = hasMatchBreakdown(match);
+                    const matchHasNoShow = hasMatchNoShow(match);
 
                     return (
                         <div key={index} className="flex flex-col p-3 border rounded gap-3">
@@ -80,6 +106,12 @@ export function PerformanceAnalysis({
                                     )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
+                                    {matchHasNoShow && (
+                                        <Badge variant="destructive">No Show</Badge>
+                                    )}
+                                    {matchHasBreakdown && (
+                                        <Badge variant="destructive">Broke Down</Badge>
+                                    )}
                                     {matchBadges.map(badge => {
                                         const matchValue = match[badge.key];
                                         if (matchValue === badge.showWhen) {
@@ -120,8 +152,8 @@ export function PerformanceAnalysis({
                                     endgamePoints: typeof match['endgamePoints'] === 'number' ? match['endgamePoints'] : 0,
                                     totalPoints: typeof match['totalPoints'] === 'number' ? match['totalPoints'] : 0,
                                     autoPassedMobilityLine: !!match['autoPassedMobilityLine'],
-                                    climbAttempted: !!match['climbAttempted'] || !!match['climbed'],
-                                    climbSucceeded: !!match['climbed'],
+                                    climbAttempted: !!match['climbAttempted'],
+                                    climbSucceeded: !!match['endgameSuccess'],
                                     parkAttempted: !!match['parkAttempted'],
                                     brokeDown: !!match['brokeDown'],
                                     playedDefense: !!match['playedDefense'],
@@ -228,7 +260,7 @@ export function PerformanceAnalysis({
                     </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="self-start">
                     <CardHeader>
                         <CardTitle>Match-by-Match Performance</CardTitle>
                     </CardHeader>

@@ -88,6 +88,7 @@ export interface TeamStatsTemplate extends TeamStats {
     trenchStuckRate: number;
     bumpStuckRate: number;
     brokeDownRate: number;
+    noShowRate: number;
     usedTrenchInTeleopRate: number;
     usedBumpInTeleopRate: number;
     passedToAllianceFromNeutralRate: number;
@@ -115,8 +116,11 @@ export interface MatchResult {
     teleopPoints: number;
     endgamePoints: number;
     endgameSuccess: boolean;
+    climbAttempted: boolean;
+    climbFailed: boolean;
     climbLevel: number; // 0=none, 1-3=level
     brokeDown: boolean;
+    noShow: boolean;
     startPosition: number;
     comment: string;
     // Fuel data
@@ -199,6 +203,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 trenchStuckRate: 0,
                 bumpStuckRate: 0,
                 brokeDownRate: 0,
+                noShowRate: 0,
                 usedTrenchInTeleopRate: 0,
                 usedBumpInTeleopRate: 0,
                 passedToAllianceFromNeutralRate: 0,
@@ -264,6 +269,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
             acc.trenchStuck += (gameData?.auto?.trenchStuckCount || 0) > 0 || (gameData?.teleop?.trenchStuckCount || 0) > 0 ? 1 : 0;
             acc.bumpStuck += (gameData?.auto?.bumpStuckCount || 0) > 0 || (gameData?.teleop?.bumpStuckCount || 0) > 0 ? 1 : 0;
             acc.brokeDown += (gameData?.auto?.brokenDownCount || 0) > 0 || (gameData?.teleop?.brokenDownCount || 0) > 0 ? 1 : 0;
+            acc.noShow += (entry as ScoutingEntryTemplate & { noShow?: boolean }).noShow === true || /no\s*show/i.test(entry.comments || '') ? 1 : 0;
             acc.usedTrenchInTeleop += gameData?.endgame?.usedTrenchInTeleop ? 1 : 0;
             acc.usedBumpInTeleop += gameData?.endgame?.usedBumpInTeleop ? 1 : 0;
             acc.passedToAllianceFromNeutral += gameData?.endgame?.passedToAllianceFromNeutral ? 1 : 0;
@@ -312,6 +318,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
             trenchStuck: 0,
             bumpStuck: 0,
             brokeDown: 0,
+            noShow: 0,
             usedTrenchInTeleop: 0,
             usedBumpInTeleop: 0,
             passedToAllianceFromNeutral: 0,
@@ -341,6 +348,10 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
             if (entry.gameData?.endgame?.climbL3) climbLevel = 3;
             else if (entry.gameData?.endgame?.climbL2) climbLevel = 2;
             else if (entry.gameData?.endgame?.climbL1) climbLevel = 1;
+            const climbFailed = entry.gameData?.endgame?.climbFailed === true;
+            const climbAttempted = climbLevel > 0 || climbFailed;
+            const isNoShow = (entry as ScoutingEntryTemplate & { noShow?: boolean }).noShow === true
+                || /no\s*show/i.test(entry.comments || '');
 
             return {
                 matchNumber: String(entry.matchNumber),
@@ -353,8 +364,12 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 teleopPoints,
                 endgamePoints,
                 endgameSuccess: climbLevel > 0,
+                climbAttempted,
+                climbFailed,
                 climbLevel,
-                brokeDown: entry.gameData?.endgame?.climbFailed || false,
+                brokeDown: (entry.gameData?.auto?.brokenDownCount || 0) > 0
+                    || (entry.gameData?.teleop?.brokenDownCount || 0) > 0,
+                noShow: isNoShow,
                 startPosition: entry.gameData?.auto?.startPosition ?? -1,
                 comment: entry.comments || '',
                 autoFuel: entry.gameData?.auto?.fuelScoredCount || 0,
@@ -497,6 +512,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
             trenchStuckRate: Math.round((totals.trenchStuck / matchCount) * 100),
             bumpStuckRate: Math.round((totals.bumpStuck / matchCount) * 100),
             brokeDownRate: Math.round((totals.brokeDown / matchCount) * 100),
+            noShowRate: Math.round((totals.noShow / matchCount) * 100),
             usedTrenchInTeleopRate: Math.round((totals.usedTrenchInTeleop / matchCount) * 100),
             usedBumpInTeleopRate: Math.round((totals.usedBumpInTeleop / matchCount) * 100),
             passedToAllianceFromNeutralRate: Math.round((totals.passedToAllianceFromNeutral / matchCount) * 100),
@@ -686,6 +702,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
                 tab: 'performance',
                 rates: [
                     { key: 'defenseRate', label: 'Played Defense (Any Phase)' },
+                    { key: 'noShowRate', label: 'No Show' },
                     { key: 'brokeDownRate', label: 'Broke Down' },
                     { key: 'trenchStuckRate', label: 'Got Stuck in Trench' },
                     { key: 'bumpStuckRate', label: 'Got Stuck on Bump' },
@@ -705,7 +722,7 @@ export const strategyAnalysis: StrategyAnalysis<ScoutingEntryTemplate> = {
     getMatchBadges(): MatchBadgeDefinition[] {
         return [
             { key: 'endgameSuccess', label: 'Climbed', variant: 'secondary', showWhen: true },
-            { key: 'brokeDown', label: 'Failed', variant: 'destructive', showWhen: true },
+            { key: 'climbFailed', label: 'Failed', variant: 'destructive', showWhen: true },
         ];
     },
 

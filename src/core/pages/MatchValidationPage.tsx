@@ -155,7 +155,7 @@ export const MatchValidationPage: React.FC = () => {
         if (cancelled) return;
 
         const hybrid = calculateFuelOPRHybrid(cachedMatches, {
-          includePlayoffs: false,
+          includePlayoffs: true,
         });
 
         const opr = hybrid.opr;

@@ -115,6 +115,12 @@ export const calculateTeamStats = (teamMatches: ScoutingEntry[]): Omit<TeamStats
     const passedToAllianceFromNeutralCount = teamMatches.filter(m => m.gameData?.endgame?.passedToAllianceFromNeutral === true).length;
     const passedToAllianceFromOpponentCount = teamMatches.filter(m => m.gameData?.endgame?.passedToAllianceFromOpponent === true).length;
     const passedToNeutralCount = teamMatches.filter(m => m.gameData?.endgame?.passedToNeutral === true).length;
+    const brokeDownCount = teamMatches.filter(m =>
+        val(m.gameData?.auto?.brokenDownCount) > 0 || val(m.gameData?.teleop?.brokenDownCount) > 0
+    ).length;
+    const noShowCount = teamMatches.filter(m =>
+        m.noShow === true || /no\s*show/i.test(m.comments || '')
+    ).length;
 
     // ============================================================================
     // TELEOP STATS
@@ -336,6 +342,8 @@ export const calculateTeamStats = (teamMatches: ScoutingEntry[]): Omit<TeamStats
         climbL2Rate: percent(climbL2Count, matchCount),
         climbL3Rate: percent(climbL3Count, matchCount),
         climbSuccessRate: percent(climbSuccessCount, matchCount),
+        brokeDownCount,
+        noShowCount,
 
         // Role data
         primaryActiveRole,
@@ -509,5 +517,7 @@ function getEmptyStats(): Omit<TeamStats, 'teamNumber' | 'eventKey'> {
         autoShotStationaryRate: 0,
         teleopShotOnTheMoveRate: 0,
         teleopShotStationaryRate: 0,
+        brokeDownCount: 0,
+        noShowCount: 0,
     };
 }

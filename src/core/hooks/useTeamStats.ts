@@ -168,7 +168,7 @@ export const useTeamStats = () => {
                 ).flat();
 
                 const hybrid = calculateFuelOPRHybrid(allMatches, {
-                    includePlayoffs: false,
+                    includePlayoffs: true,
                 });
 
                 oprByTeam = new Map(

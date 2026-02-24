@@ -69,6 +69,20 @@ export const matchStrategyConfig: {
                     format: 'number',
                     decimals: 1,
                     aggregation: 'average'
+                },
+                {
+                    key: 'brokeDownCount',
+                    label: 'Breakdowns',
+                    color: 'text-red-600',
+                    format: 'number',
+                    decimals: 0
+                },
+                {
+                    key: 'noShowCount',
+                    label: 'No Shows',
+                    color: 'text-orange-600',
+                    format: 'number',
+                    decimals: 0
                 }
             ]
         },
