@@ -5,9 +5,6 @@
  */
 
 // PWA Components
-export { InstallPrompt } from '../core/components/pwa/InstallPrompt';
-export { PWAUpdatePrompt } from '../core/components/pwa/PWAUpdatePrompt';
-
 // Notification Components
 export { Toaster } from '../core/components/notification/Toaster';
 
