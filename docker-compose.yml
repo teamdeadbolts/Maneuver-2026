@@ -15,7 +15,7 @@ services:
     image: postgres:alpine3.22
     container_name: maneuver-db
     restart: always #  postgresql://maneuver_user:secret_password@localhost:5432/maneuver_db?schema=public
-    env_file: ./.env
+    env_file: stack.env
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -35,7 +35,7 @@ services:
     container_name: maneuver-api
     restart: always
     env_file:
-      - ./.env
+      - stack.env
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
     depends_on:
