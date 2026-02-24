@@ -27,6 +27,7 @@ import type {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
+  console.log(API_BASE);
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {

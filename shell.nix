@@ -12,6 +12,7 @@ pkgs.mkShell {
 
   shellHook = ''
     export DOCKER_HOST="unix://$XDG_RUNTIME_DIR/podman/podman.sock"
+    export DATABASE_URL="postgresql://maneuver_user:secret_password@localhost:5432/maneuver_db"
     export PRISMA_SCHEMA_ENGINE_BINARY="${pkgs.prisma-engines}/bin/schema-engine"
     export PRISMA_QUERY_ENGINE_BINARY="${pkgs.prisma-engines}/bin/query-engine"
     export PRISMA_QUERY_ENGINE_LIBRARY="${pkgs.prisma-engines}/lib/libquery_engine.node"

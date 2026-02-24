@@ -103,6 +103,10 @@ app.post('/api/matches/bulk', async (req, res) => {
 app.delete('/api/matches/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    if (id === 'all') {
+      await prisma.matchScouting.deleteMany({});
+      return res.json({ success: true });
+    }
     await prisma.matchScouting.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {
@@ -119,16 +123,6 @@ app.delete('/api/matches/events/:eventKey', async (req, res) => {
   } catch (error) {
     console.error('Error clearing match scouting data:', error);
     res.status(500).json({ error: 'Failed to clear match scouting data' });
-  }
-});
-
-app.delete('/api/matches/all', async (req, res) => {
-  try {
-    await prisma.matchScouting.deleteMany({});
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error clearing all match scouting data:', error);
-    res.status(500).json({ error: 'Failed to clear all match scouting data' });
   }
 });
 
@@ -205,21 +199,15 @@ app.get('/api/pit/event/:eventKey', async (req, res) => {
 app.delete('/api/pit/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    if (id === 'all') {
+      await prisma.pitScouting.deleteMany({});
+      return res.json({ success: true });
+    }
     await prisma.pitScouting.delete({ where: { id } });
     res.json({ success: true });
   } catch (error) {
     console.error('Error deleting pit scouting entry:', error);
     res.status(500).json({ error: 'Failed to delete pit scouting entry' });
-  }
-});
-
-app.delete('/api/pit/all', async (req, res) => {
-  try {
-    await prisma.pitScouting.deleteMany({});
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Error clearing all pit scouting data:', error);
-    res.status(500).json({ error: 'Failed to clear all pit scouting data' });
   }
 });
 

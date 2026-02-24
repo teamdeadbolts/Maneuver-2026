@@ -44,8 +44,6 @@ import AchievementsPage from '@/core/pages/AchievementsPage';
 import DevUtilitiesPage from '@/core/pages/DevUtilitiesPage';
 import { MatchValidationPage } from '@/core/pages/MatchValidationPage';
 import PitAssignmentsPage from '@/core/pages/PitAssignmentsPage';
-import { InstallPrompt } from '@/core/components/pwa/InstallPrompt';
-import { PWAUpdatePrompt } from '@/core/components/pwa/PWAUpdatePrompt';
 import { StatusBarSpacer } from '@/core/components/StatusBarSpacer';
 import { SplashScreen } from '@/core/components/SplashScreen';
 import { FullscreenProvider } from '@/core/contexts/FullscreenContext';
@@ -276,10 +274,6 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js');
-    }
-
     // Track PWA install prompt
     window.addEventListener('beforeinstallprompt', () => {
       analytics.trackEvent('pwa_install_prompt_shown');
@@ -338,8 +332,6 @@ function App() {
           <WebRTCProvider>
             <div className="min-h-screen bg-background">
               <RouterProvider router={router} />
-              <InstallPrompt />
-              <PWAUpdatePrompt />
               <StatusBarSpacer />
               <WebRTCDataRequestDialog />
               <WebRTCPushedDataDialog />
