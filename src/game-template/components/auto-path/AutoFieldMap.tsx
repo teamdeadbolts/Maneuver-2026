@@ -499,6 +499,16 @@ function AutoFieldMapContent({
     const handleElementClick = (elementKey: string) => {
         const element = FIELD_ELEMENTS[elementKey as keyof typeof FIELD_ELEMENTS];
         if (!element) return;
+        let clearedPersistentStuck = false;
+
+        // If user taps a different target while "Stuck?" is showing, treat it as dismissal
+        if (!recordingMode && stuckElementKey && stuckElementKey !== elementKey) {
+            if (stuckTimeoutRef.current) {
+                clearTimeout(stuckTimeoutRef.current);
+                stuckTimeoutRef.current = null;
+            }
+            setStuckElementKey(null);
+        }
 
         // 1. Handle Persistent Stuck Resolution
         if (!recordingMode && stuckStarts[elementKey]) {
@@ -526,6 +536,32 @@ function AutoFieldMapContent({
             return;
         }
 
+        // 1b. If stuck on another obstacle, auto-resolve it and continue with the newly tapped action
+        if (!recordingMode && isAnyStuck) {
+            const now = Date.now();
+            Object.entries(stuckStarts).forEach(([stuckKey, startTime]) => {
+                if (!startTime || typeof startTime !== 'number') return;
+
+                const obstacleType = stuckKey.includes('trench') ? 'trench' : 'bump';
+                const stuckElement = FIELD_ELEMENTS[stuckKey as keyof typeof FIELD_ELEMENTS];
+                const stuckDuration = Math.min(now - startTime, AUTO_PHASE_DURATION_MS);
+
+                onAddAction({
+                    id: generateId(),
+                    type: 'unstuck',
+                    action: `unstuck-${obstacleType}`,
+                    position: stuckElement ? { x: stuckElement.x, y: stuckElement.y } : { x: 0, y: 0 },
+                    timestamp: now,
+                    duration: stuckDuration,
+                    obstacleType: obstacleType as 'trench' | 'bump',
+                    amountLabel: formatDurationSecondsLabel(stuckDuration),
+                });
+            });
+
+            setStuckStarts({});
+            clearedPersistentStuck = true;
+        }
+
         // 2. Handle Potential Stuck Promotion (Second tap within 5s)
         if (!recordingMode && stuckElementKey === elementKey) {
             if (stuckTimeoutRef.current) {
@@ -538,7 +574,7 @@ function AutoFieldMapContent({
         }
 
         // Block clicks while any popup is active or robot is stuck elsewhere or broken down
-        if (pendingWaypoint || pendingShotTypeWaypoint || isSelectingScore || isSelectingPass || isSelectingCollect || selectedStartKey || isAnyStuck || isBrokenDown) {
+        if (pendingWaypoint || pendingShotTypeWaypoint || isSelectingScore || isSelectingPass || isSelectingCollect || selectedStartKey || (!clearedPersistentStuck && isAnyStuck) || isBrokenDown) {
             return;
         }
 

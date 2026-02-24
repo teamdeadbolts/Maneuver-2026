@@ -28,6 +28,7 @@ import {
 } from '@/core/components/ui/dropdown-menu';
 import { Maximize2, Minimize2, Undo2, ChevronLeft, ArrowRight, RotateCw, AlertTriangle, UserX, MoreVertical, List } from 'lucide-react';
 import { cn } from '@/core/lib/utils';
+import { shouldAllowProceed, DEFAULT_PROCEED_DEBOUNCE_MS } from '@/core/lib/proceedDebounce';
 import type { ZoneType } from './types';
 import { useState } from 'react';
 
@@ -178,6 +179,14 @@ export function FieldHeader({
             : proceedLabel;
     
     const [showNoShowDialog, setShowNoShowDialog] = useState(false);
+
+    const handleProceedClick = () => {
+        if (!onProceed) return;
+        if (!shouldAllowProceed(DEFAULT_PROCEED_DEBOUNCE_MS)) {
+            return;
+        }
+        onProceed();
+    };
 
     return (
         <div className="flex items-center justify-between px-1">
@@ -432,7 +441,7 @@ export function FieldHeader({
                 {/* Proceed (fullscreen only) - Always visible when applicable */}
                 {isFullscreen && onProceed && (
                     <Button
-                        onClick={onProceed}
+                        onClick={handleProceedClick}
                         className={cn(
                             "h-8 px-3 ml-1 text-[11px] font-bold tracking-tight gap-1",
                             phase === 'teleop' && "bg-green-600 hover:bg-green-500",
