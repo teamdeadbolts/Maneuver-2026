@@ -19,10 +19,12 @@ import type {
   PitScoutingStats,
 } from '../types';
 
-const API_PORT = 3000;
-const url = new URL(window.location.origin);
-url.port = API_PORT.toString();
-const API_BASE = import.meta.env.VITE_API_BASE_URL || `${url.toString()}api`;
+// const API_PORT = 3000;
+// const url = new URL(window.location.origin);
+// url.port = API_PORT.toString();
+// const API_BASE = import.meta.env.VITE_API_BASE_URL || `${url.toString()}api`;
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {

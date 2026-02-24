@@ -11,6 +11,8 @@ import {
   setCurrentEvent,
 } from '@/core/lib/tba';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
+
 export const useTBAData = () => {
   // Match Data Loading state
   const [matchDataLoading, setMatchDataLoading] = useState(false);
@@ -43,9 +45,10 @@ export const useTBAData = () => {
       };
 
       const res = await fetch(
-        `/.netlify/functions/api-proxy?provider=tba&endpoint=${encodeURIComponent(`/event/${tbaEventKey}/matches/simple`)}`,
+        `${API_BASE}/provider_proxy?provider=tba&endpoint=${encodeURIComponent(`/event/${tbaEventKey}/matches/simple`)}`,
         { headers }
       );
+
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -134,7 +137,7 @@ export const useTBAData = () => {
         ...(tbaApiKey.trim() ? { 'X-Client-Api-Key': tbaApiKey } : {}),
       };
       const response = await fetch(
-        `/.netlify/functions/api-proxy?provider=tba&endpoint=${encodeURIComponent(`/event/${tbaEventKey.trim()}/matches/simple`)}`,
+        `${API_BASE}/provider_proxy?provider=tba&endpoint=${encodeURIComponent(`/event/${tbaEventKey.trim()}/matches/simple`)}`,
         { headers }
       );
 

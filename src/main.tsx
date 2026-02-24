@@ -15,36 +15,36 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('/sw.js')
-      .then(registration => {
-        if (navigator.onLine) {
-          void warmCriticalAssets(CRITICAL_OFFLINE_ASSETS);
-        }
+// if ('serviceWorker' in navigator && import.meta.env.PROD) {
+//   window.addEventListener('load', () => {
+//     navigator.serviceWorker
+//       .register('/sw.js')
+//       .then(registration => {
+//         if (navigator.onLine) {
+//           void warmCriticalAssets(CRITICAL_OFFLINE_ASSETS);
+//         }
 
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                window.dispatchEvent(
-                  new CustomEvent('sw-update-available', {
-                    detail: { waiting: newWorker },
-                  })
-                );
-              }
-            });
-          }
-        });
-      })
-      .catch(registrationError => {
-        console.log('SW registration failed: ', registrationError);
-      });
+//         registration.addEventListener('updatefound', () => {
+//           const newWorker = registration.installing;
+//           if (newWorker) {
+//             newWorker.addEventListener('statechange', () => {
+//               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+//                 window.dispatchEvent(
+//                   new CustomEvent('sw-update-available', {
+//                     detail: { waiting: newWorker },
+//                   })
+//                 );
+//               }
+//             });
+//           }
+//         });
+//       })
+//       .catch(registrationError => {
+//         console.log('SW registration failed: ', registrationError);
+//       });
 
-    window.addEventListener('online', () => {
-      void warmCriticalAssets(CRITICAL_OFFLINE_ASSETS);
-    });
-  });
-}
+//     window.addEventListener('online', () => {
+//       void warmCriticalAssets(CRITICAL_OFFLINE_ASSETS);
+//     });
+//   });
+// }

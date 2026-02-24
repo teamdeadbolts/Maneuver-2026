@@ -1,4 +1,16 @@
 services:
+  gateway:
+    image: nginx:alpine
+    container_name: maneuver-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deploy/nginx-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+      - frontend
+
   db:
     image: postgres:alpine3.22
     container_name: maneuver-db
@@ -10,8 +22,11 @@ services:
       POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build: 
@@ -19,23 +34,20 @@ services:
       dockerfile: ./server/Dockerfile
     container_name: maneuver-api
     restart: always
+    env_file:
+      - ./.env
     environment:
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-    ports:
-      - "3000:3000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build: .
     container_name: maneuver-frontend
     restart: always
-    ports:
-      - "80:80"
     depends_on:
       - api
-    environment:
-      VITE_API_URL: http://api:3000
 
 volumes:
   postgres_data:

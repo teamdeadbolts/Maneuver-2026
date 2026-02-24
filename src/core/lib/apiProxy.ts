@@ -1,20 +1,10 @@
 type ApiProvider = 'tba' | 'nexus';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 interface ProxyRequestOptions {
   apiKeyOverride?: string;
 }
 
-function getProxyBaseUrl(): string {
-  if (typeof window === 'undefined') {
-    return '';
-  }
-
-  if (import.meta.env.DEV && window.location.port === '5173') {
-    return `${window.location.protocol}//${window.location.hostname}:8888`;
-  }
-
-  return '';
-}
 
 export async function proxyGetJson<T>(
   provider: ApiProvider,
@@ -27,7 +17,7 @@ export async function proxyGetJson<T>(
   });
 
   const response = await fetch(
-    `${getProxyBaseUrl()}/.netlify/functions/api-proxy?${query.toString()}`,
+    `${API_BASE}/provider_proxy?${query.toString()}`,
     {
       method: 'GET',
       headers: {

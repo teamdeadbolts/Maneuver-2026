@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const connectionString = `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@localhost:5432/${process.env.DB_NAME}?schema=public`;
+const connectionString = process.env.DATABASE_URL || `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@localhost:5432/${process.env.DB_NAME}?schema=public`;
 console.log('Connecting to database with connection string:', connectionString);
 const pool = new pg.Pool({ connectionString });
 const adapter = new PrismaPg(pool);
@@ -327,6 +327,80 @@ app.post('/api/matches/import', async (req, res) => {
   } catch (error) {
     console.error('Error importing match scouting entries:', error);
     res.status(500).json({ error: 'Failed to import match scouting entries' });
+  }
+});
+
+const tbaAllowed = [
+  /^\/events\/\d+(?:\/simple)?$/,
+  /^\/event\/[a-z0-9]+\/matches(?:\/simple)?$/i,
+  /^\/event\/[a-z0-9]+\/teams\/keys$/i,
+  /^\/match\/[a-z0-9_]+$/i,
+];
+
+const nexusAllowed = [
+  /^\/events$/,
+  /^\/event\/[a-z0-9]+$/i,
+  /^\/event\/[a-z0-9]+\/pits$/i,
+  /^\/event\/[a-z0-9]+\/map$/i,
+];
+
+function isAllowedEndpoint(provider: string, endpoint: string): boolean {
+  const rules = provider === 'tba' ? tbaAllowed : nexusAllowed;
+  return rules.some(rule => rule.test(endpoint));
+}
+
+// Provider proxy
+app.get('/api/provider_proxy', async (req, res) => {
+  try {
+    const provider = req.query.provider as string;
+    const endpoint = req.query.endpoint as string;
+
+    if (provider !== 'tba' && provider !== 'nexus') {
+      return res.status(400).json({ error: 'Invalid provider' });
+    }
+
+    if (!endpoint.startsWith('/') || !isAllowedEndpoint(provider, endpoint)) {
+      return res.status(400).json({ error: 'Endpoint not allowed' });
+    }
+
+    const overrideKey = req.headers['x-client-api-key'] as string | undefined;
+    const apiKey = overrideKey || (provider === 'tba' ? process.env.TBA_API_KEY : process.env.NEXUS_API_KEY);
+
+    const fetchOptions: RequestInit = {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        ...(provider === 'tba' ? { 'X-TBA-Auth-Key': apiKey || '' } : { 'Nexus-API-Key': apiKey || '' }),
+      },
+    };
+
+    const targetUrl =
+      provider === 'tba'
+        ? `https://www.thebluealliance.com/api/v3${endpoint}`
+        : `https://frc.nexus/api/v1${endpoint}`;
+
+    const response = await fetch(targetUrl, fetchOptions);
+    const text = await response.text();
+
+    if (!response.ok) {
+      const message =
+        typeof text === 'object' && text !== null && 'error' in text && typeof (text as any).error === 'string'
+          ? (text as any).error
+          : `Provider request failed with status ${response.status}`;
+      return res.status(500).json({ error: message });
+    }
+
+    let payload: unknown = null;
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch {
+      payload = text;
+    }
+
+    res.json(payload);
+  } catch (error) {
+    console.error('Error in provider proxy:', error);
+    res.status(500).json({ error: 'Failed to proxy provider request' });
   }
 });
 

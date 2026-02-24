@@ -24,6 +24,8 @@ const TEST_SCOUT_NAMES = [
 
 const EVENT_KEY = '2025test';
 
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
 import { gameDataTransformation } from '@/game-template/transformation';
 
 /**
@@ -223,7 +225,7 @@ export const generateTBAAlignedScoutingData = async (
   try {
     // Fetch TBA matches for the event
     const response = await fetch(
-      `/.netlify/functions/api-proxy?provider=tba&endpoint=${encodeURIComponent(`/event/${eventKey}/matches`)}`
+      `${API_BASE}/provider_proxy?provider=tba&endpoint=${encodeURIComponent(`/event/${eventKey}/matches`)}`
     );
 
     if (!response.ok) {
