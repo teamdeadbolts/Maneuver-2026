@@ -11,9 +11,12 @@ import { EventNameSelector } from '@/core/components/GameStartComponents/EventNa
 import { Card, CardContent } from '@/core/components/ui/card';
 import { Button } from '@/core/components/ui/button';
 import { RefreshCw, Settings } from 'lucide-react';
+import { toast } from 'sonner';
 import type { MatchListItem, ValidationConfig } from '@/core/lib/matchValidationTypes';
 import { DEFAULT_VALIDATION_CONFIG } from '@/core/lib/matchValidationTypes';
 import { formatMatchLabel } from '@/core/lib/matchValidationUtils';
+import { getCachedTBAEventMatches } from '@/core/lib/tbaCache';
+import { processPredictionRewardsForMatches } from '@/core/lib/predictionRewards';
 
 const VALIDATION_CONFIG_KEY = 'validationConfig';
 
@@ -75,6 +78,47 @@ export const MatchValidationPage: React.FC = () => {
     localStorage.setItem(VALIDATION_CONFIG_KEY, JSON.stringify(newConfig));
     // Note: Will need to re-validate for changes to take effect
   };
+
+  useEffect(() => {
+    if (!eventKey || isValidating || matchList.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const runAutoPredictionRewards = async () => {
+      try {
+        const cachedMatches = await getCachedTBAEventMatches(eventKey, true);
+        if (cancelled || cachedMatches.length === 0) {
+          return;
+        }
+
+        const processed = await processPredictionRewardsForMatches(cachedMatches, {
+          eventKey,
+          onlyFinalResults: true,
+          includeZeroResultMatches: false,
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (processed.summary.processedPredictionCount > 0) {
+          toast.success(
+            `Auto-processed ${processed.summary.processedPredictionCount} predictions (${processed.summary.correctPredictionCount} correct, ${processed.summary.totalStakesAwarded} stakes)`
+          );
+        }
+      } catch (error) {
+        console.error('Failed to auto-process prediction rewards:', error);
+      }
+    };
+
+    void runAutoPredictionRewards();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventKey, isValidating, matchList]);
 
   return (
     <div className="container min-h-screen mx-auto px-4 pt-12 pb-24 space-y-6 mt-safe">
