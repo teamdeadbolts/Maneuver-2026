@@ -11,6 +11,7 @@
 
 import { Button } from '@/core/components/ui/button';
 import { Badge } from '@/core/components/ui/badge';
+import { Kbd } from '@/core/components/ui/kbd';
 import {
     Dialog,
     DialogContent,
@@ -281,10 +282,13 @@ export function FieldHeader({
                             "h-8 px-2 md:px-3 text-[10px] md:text-xs font-bold gap-1",
                             isBrokenDown && "animate-pulse"
                         )}
-                        title={isBrokenDown ? "Robot is broken down - tap to resume" : "Mark robot as broken down"}
+                        title={isBrokenDown ? "Robot is broken down - tap to resume (X)" : "Mark robot as broken down (X)"}
                     >
                         <AlertTriangle className="h-3 w-3 md:h-4 md:w-4" />
-                        <span className="hidden sm:inline">Broken?</span>
+                        <span className="hidden sm:inline-flex items-center gap-1.5">
+                            <span>Broken?</span>
+                            <Kbd className="h-4 px-1 text-[9px]">X</Kbd>
+                        </span>
                     </Button>
                 )}
 

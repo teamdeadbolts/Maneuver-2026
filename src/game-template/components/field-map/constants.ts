@@ -15,7 +15,7 @@ export const FIELD_ELEMENTS: Record<string, FieldElement> = {
     // Alliance Zone elements (left side for blue)
     hub: { x: 0.31, y: 0.5, label: 'HUB_ICON', name: 'Hub', scaleWidth: 1 },
     depot: { x: 0.09, y: 0.29, label: 'DEPOT_ICON', name: 'Depot' },
-    outpost: { x: 0.09, y: 0.87, label: 'OUTPOST_ICON', name: 'Outpost' },
+    outpost: { x: 0.10, y: 0.87, label: 'OUTPOST_ICON', name: 'Outpost', scaleWidth: 1.2 },
     tower: { x: 0.1, y: 0.53, label: 'CLIMB_ICON', name: 'Climb' },
 
     // Traversal elements - bumps span wider area

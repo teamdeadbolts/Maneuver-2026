@@ -7,8 +7,17 @@
 
 import { Button } from '@/core/components/ui/button';
 import { Card, CardHeader, CardTitle, CardFooter } from '@/core/components/ui/card';
+import { Kbd } from '@/core/components/ui/kbd';
 import { cn } from '@/core/lib/utils';
 import { FIELD_ELEMENTS } from '../../field-map';
+
+const START_POSITION_LABELS: Record<string, string> = {
+    trench1: 'Left Trench',
+    bump1: 'Left Bump',
+    hub: 'Center Hub',
+    bump2: 'Right Bump',
+    trench2: 'Right Trench',
+};
 
 // =============================================================================
 // TYPES
@@ -36,6 +45,7 @@ export function AutoStartConfirmation({
     onCancel,
 }: AutoStartConfirmationProps) {
     const element = FIELD_ELEMENTS[selectedStartKey];
+    const startPositionLabel = START_POSITION_LABELS[selectedStartKey] ?? element?.name ?? selectedStartKey;
 
     if (!element) return null;
 
@@ -47,7 +57,7 @@ export function AutoStartConfirmation({
         )}>
             <Card className="w-72 pointer-events-auto shadow-2xl border-primary/20">
                 <CardHeader className="text-center pb-2">
-                    <CardTitle className="text-2xl font-bold">{element.name}</CardTitle>
+                    <CardTitle className="text-2xl font-bold">{startPositionLabel}</CardTitle>
                 </CardHeader>
                 <CardFooter className="flex flex-col gap-2 pt-2">
                     <Button
@@ -63,7 +73,7 @@ export function AutoStartConfirmation({
                         }}
                         className="w-full h-12 text-base font-bold"
                     >
-                        Confirm Start
+                        Confirm Start Location
                     </Button>
                     <Button
                         variant="ghost"
@@ -72,6 +82,9 @@ export function AutoStartConfirmation({
                     >
                         Cancel
                     </Button>
+                    <p className="text-[11px] text-muted-foreground text-center">
+                        Keys: <Kbd className="h-4 px-1 text-[9px] align-middle">Space</Kbd> confirm, <Kbd className="h-4 px-1 text-[9px] align-middle">Esc</Kbd> cancel
+                    </p>
                 </CardFooter>
             </Card>
         </div>

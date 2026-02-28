@@ -216,6 +216,48 @@ function AutoFieldMapContent({
         setIsSelectingCollect,
     } = useAutoScoring();
 
+    const autoTraversalHotkeyMap: Record<string, string> = isFieldRotated
+        ? {
+            trench1: '1',
+            bump1: '2',
+            bump2: '3',
+            trench2: '4',
+        }
+        : {
+            trench1: '4',
+            bump1: '3',
+            bump2: '2',
+            trench2: '1',
+        };
+
+    const autoStartHotkeyMap: Record<string, string> = isFieldRotated
+        ? {
+            trench1: '1',
+            bump1: '2',
+            hub: 'S',
+            bump2: '3',
+            trench2: '4',
+        }
+        : {
+            trench1: '4',
+            bump1: '3',
+            hub: 'S',
+            bump2: '2',
+            trench2: '1',
+        };
+
+    const autoElementHotkeys: Partial<Record<string, string>> = {
+        hub: 'S',
+        pass: 'A',
+        pass_alliance: 'A',
+        tower: 'F',
+        depot: 'C',
+        outpost: 'G',
+        opponent_foul: 'V',
+        collect_alliance: 'D',
+        collect_neutral: 'D',
+        ...autoTraversalHotkeyMap,
+    };
     const navigate = useNavigate();
     const location = useLocation();
     const { transformation } = useGame();
@@ -248,6 +290,7 @@ function AutoFieldMapContent({
     const [robotCapacity, setRobotCapacity] = useState<number | undefined>();
     const [actionLogOpen, setActionLogOpen] = useState(false);
     const [pendingShotTypeWaypoint, setPendingShotTypeWaypoint] = useState<PathWaypoint | null>(null);
+    const [focusClimbTimeInputOnOpen, setFocusClimbTimeInputOnOpen] = useState(false);
     const [autoElapsedMs, setAutoElapsedMs] = useState(0);
     const [elapsedSinceStartConfirmationMs, setElapsedSinceStartConfirmationMs] = useState(0);
 
@@ -498,7 +541,7 @@ function AutoFieldMapContent({
         }
     };
 
-    const handleElementClick = (elementKey: string) => {
+    const handleElementClick = useCallback((elementKey: string) => {
         const element = FIELD_ELEMENTS[elementKey as keyof typeof FIELD_ELEMENTS];
         if (!element) return;
         let clearedPersistentStuck = false;
@@ -606,6 +649,7 @@ function AutoFieldMapContent({
                     position: position,
                     timestamp: Date.now(),
                 };
+                setFocusClimbTimeInputOnOpen(false);
                 setPendingWaypoint(waypoint);
                 setClimbResult('success');
                 setClimbLocation(undefined);
@@ -641,7 +685,33 @@ function AutoFieldMapContent({
                 addWaypoint('foul', 'mid-line-penalty', position);
                 break;
         }
-    };
+    }, [
+        actions.length,
+        addWaypoint,
+        generateId,
+        isAnyStuck,
+        isBrokenDown,
+        isSelectingCollect,
+        isSelectingPass,
+        isSelectingScore,
+        onAddAction,
+        pendingShotTypeWaypoint,
+        pendingWaypoint,
+        recordingMode,
+        selectedStartKey,
+        setClimbLocation,
+        setClimbResult,
+        setFocusClimbTimeInputOnOpen,
+        setIsSelectingCollect,
+        setIsSelectingPass,
+        setIsSelectingScore,
+        setPendingWaypoint,
+        setSelectedStartKey,
+        setStuckElementKey,
+        setStuckStarts,
+        stuckElementKey,
+        stuckStarts,
+    ]);
 
     // Consolidated interaction handler
     const handleInteractionEnd = (points: { x: number; y: number }[]) => {
@@ -824,6 +894,275 @@ function AutoFieldMapContent({
     ]);
 
     useEffect(() => {
+        if (recordingMode) return;
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            const key = event.key.toLowerCase();
+            const target = event.target as HTMLElement | null;
+            const isEditableTarget =
+                !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+            if (isEditableTarget) return;
+
+            if (key === 'escape') {
+                event.preventDefault();
+
+                if (pendingShotTypeWaypoint) {
+                    setPendingShotTypeWaypoint(null);
+                    setPendingWaypoint(null);
+                    resetDrawing();
+                    return;
+                }
+
+                if (pendingWaypoint) {
+                    setPendingWaypoint(null);
+                    setAccumulatedFuel(0);
+                    setFuelHistory([]);
+                    setClimbLocation(undefined);
+                    resetDrawing();
+                    return;
+                }
+
+                if (selectedStartKey) {
+                    setSelectedStartKey(null);
+                    return;
+                }
+
+                if (isSelectingScore) {
+                    setIsSelectingScore(false);
+                    resetDrawing();
+                    return;
+                }
+
+                if (isSelectingPass) {
+                    setIsSelectingPass(false);
+                    resetDrawing();
+                    return;
+                }
+
+                if (isSelectingCollect) {
+                    setIsSelectingCollect(false);
+                    resetDrawing();
+                    return;
+                }
+
+                if (showPostClimbProceed) {
+                    setShowPostClimbProceed(false);
+                }
+                return;
+            }
+
+            if (selectedStartKey && event.code === 'Space') {
+                event.preventDefault();
+                const startElement = FIELD_ELEMENTS[selectedStartKey];
+                if (!startElement) {
+                    setSelectedStartKey(null);
+                    return;
+                }
+                addWaypoint('start', selectedStartKey, { x: startElement.x, y: startElement.y });
+                setSelectedStartKey(null);
+                return;
+            }
+
+            if (pendingWaypoint || pendingShotTypeWaypoint || selectedStartKey) return;
+
+            if (key === 'z') {
+                event.preventDefault();
+                if (brokenDownStart) {
+                    setBrokenDownStart(null);
+                }
+                if (onUndo) {
+                    onUndo();
+                }
+                return;
+            }
+
+            if (key === 'x') {
+                event.preventDefault();
+                if (brokenDownStart) {
+                    const duration = Date.now() - brokenDownStart;
+                    const newTotal = totalBrokenDownTime + duration;
+                    setTotalBrokenDownTime(newTotal);
+                    localStorage.setItem('autoBrokenDownTime', String(newTotal));
+                    setBrokenDownStart(null);
+                    localStorage.removeItem('autoBrokenDownStart');
+                } else {
+                    const now = Date.now();
+                    setBrokenDownStart(now);
+                    localStorage.setItem('autoBrokenDownStart', String(now));
+                }
+                return;
+            }
+
+            if (key === 'enter') {
+                event.preventDefault();
+                proceedToTeleop();
+                return;
+            }
+
+            const visibleAutoElements = getVisibleElements('auto', currentZone);
+            const visibleAutoElementSet = new Set<string>(visibleAutoElements);
+
+            const canScoreFromZone = visibleAutoElementSet.has('hub');
+            const canPassFromZone = visibleAutoElementSet.has('pass') || visibleAutoElementSet.has('pass_alliance');
+            const canCollectFromZone = visibleAutoElementSet.has('collect_alliance') || visibleAutoElementSet.has('collect_neutral');
+            const canDepotFromZone = visibleAutoElementSet.has('depot');
+            const canOutpostFromZone = visibleAutoElementSet.has('outpost');
+            const canFoulFromZone = visibleAutoElementSet.has('opponent_foul');
+            const canClimbFromZone = visibleAutoElementSet.has('tower');
+
+            const canUseTraversalHotkeys =
+                actions.length === 0
+                    ? true
+                    : (
+                        visibleAutoElementSet.has('trench1') ||
+                        visibleAutoElementSet.has('bump1') ||
+                        visibleAutoElementSet.has('bump2') ||
+                        visibleAutoElementSet.has('trench2')
+                    );
+
+            const autoTraversalElementKey = isFieldRotated
+                ? ({
+                    '1': 'trench1',
+                    '2': 'bump1',
+                    '3': 'bump2',
+                    '4': 'trench2',
+                } as const)[key]
+                : ({
+                    '1': 'trench2',
+                    '2': 'bump2',
+                    '3': 'bump1',
+                    '4': 'trench1',
+                } as const)[key];
+
+            if (actions.length === 0 && key === 's') {
+                event.preventDefault();
+                handleElementClick('hub');
+                return;
+            }
+
+            if (autoTraversalElementKey && canUseTraversalHotkeys) {
+                event.preventDefault();
+                handleElementClick(autoTraversalElementKey);
+                return;
+            }
+
+            const isBusyWithSelection =
+                isSelectingScore ||
+                isSelectingPass ||
+                isSelectingCollect ||
+                isAnyStuck ||
+                isBrokenDown ||
+                showPostClimbProceed;
+
+            if (isBusyWithSelection) return;
+
+            if (key === 's') {
+                if (actions.length === 0 || !canScoreFromZone) return;
+                event.preventDefault();
+                setIsSelectingScore(true);
+                return;
+            }
+
+            if (key === 'a') {
+                if (actions.length === 0 || !canPassFromZone) return;
+                event.preventDefault();
+                setIsSelectingPass(true);
+                return;
+            }
+
+            if (key === 'd') {
+                if (actions.length === 0 || !canCollectFromZone) return;
+                event.preventDefault();
+                setIsSelectingCollect(true);
+                return;
+            }
+
+            if (key === 'c') {
+                if (actions.length === 0 || !canDepotFromZone) return;
+                event.preventDefault();
+                handleElementClick('depot');
+                return;
+            }
+
+            if (key === 'g') {
+                if (actions.length === 0 || !canOutpostFromZone) return;
+                event.preventDefault();
+                handleElementClick('outpost');
+                return;
+            }
+
+            if (key === 'v') {
+                if (actions.length === 0 || !canFoulFromZone) return;
+                event.preventDefault();
+                handleElementClick('opponent_foul');
+                return;
+            }
+
+            if (key === 'f') {
+                if (actions.length === 0 || !canClimbFromZone) return;
+                event.preventDefault();
+                const towerElement = FIELD_ELEMENTS.tower;
+                if (!towerElement) return;
+                setFocusClimbTimeInputOnOpen(true);
+                setPendingWaypoint({
+                    id: generateId(),
+                    type: 'climb',
+                    action: 'attempt',
+                    position: { x: towerElement.x, y: towerElement.y },
+                    timestamp: Date.now(),
+                });
+                setClimbResult('success');
+                setClimbLocation(undefined);
+                return;
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [
+        actions.length,
+        addWaypoint,
+        brokenDownStart,
+        currentZone,
+        generateId,
+        isAnyStuck,
+        isBrokenDown,
+        isSelectingCollect,
+        isSelectingPass,
+        isSelectingScore,
+        onUndo,
+        pendingShotTypeWaypoint,
+        pendingWaypoint,
+        proceedToTeleop,
+        recordingMode,
+        resetDrawing,
+        isFieldRotated,
+        selectedStartKey,
+        handleElementClick,
+        setAccumulatedFuel,
+        setBrokenDownStart,
+        setClimbResult,
+        setClimbLocation,
+        setFuelHistory,
+        setFocusClimbTimeInputOnOpen,
+        setIsSelectingCollect,
+        setIsSelectingPass,
+        setIsSelectingScore,
+        setPendingWaypoint,
+        setSelectedStartKey,
+        setShowPostClimbProceed,
+        showPostClimbProceed,
+        totalBrokenDownTime,
+    ]);
+
+    useEffect(() => {
+        if (!pendingWaypoint || pendingWaypoint.type !== 'climb') {
+            setFocusClimbTimeInputOnOpen(false);
+        }
+    }, [pendingWaypoint]);
+
+    useEffect(() => {
         if (recordingMode || hasAutoAdvancedRef.current) return;
         if (!shouldAutoAdvanceToTeleop) return;
         if (sessionStorage.getItem(autoSwitchOnceStorageKey) === 'true') return;
@@ -901,16 +1240,67 @@ function AutoFieldMapContent({
             />
 
             {/* Field with Overlay Buttons */}
-            <div
-                ref={containerRef}
-                className={cn(
-                    "relative rounded-lg overflow-hidden border border-slate-700 bg-slate-900 select-none",
-                    "w-full aspect-2/1",
-                    isFullscreen ? "max-h-[85vh] m-auto" : "h-auto",
-                    shouldPulseAutoBorder && "border-green-500 animate-pulse",
-                    isFieldRotated && "rotate-180" // 180° rotation for field orientation preference
+            <div className={cn("flex-1 relative", isFullscreen ? "h-full flex items-center justify-center" : "") }>
+                <div
+                    ref={containerRef}
+                    className={cn(
+                        "relative rounded-lg overflow-hidden border border-slate-700 bg-slate-900 select-none",
+                        "w-full aspect-2/1",
+                        isFullscreen ? "max-h-[85vh] m-auto" : "h-auto",
+                        shouldPulseAutoBorder && "border-green-500 animate-pulse",
+                        isFieldRotated && "rotate-180" // 180° rotation for field orientation preference
+                    )}
+                >
+                {!pendingShotTypeWaypoint && (isSelectingScore || isSelectingPass || isSelectingCollect) && (
+                    <div
+                        className={cn(
+                            "absolute inset-x-0 top-1 z-30 flex pointer-events-none",
+                            isFieldRotated && "bottom-1 top-auto",
+                            "justify-center px-2"
+                        )}
+                    >
+                        <Card className={cn(
+                            "pointer-events-none bg-background/70 backdrop-blur-sm shadow-2xl py-1 px-2 sm:py-2 sm:px-3 flex flex-row items-center gap-2 sm:gap-3 max-w-[68%]",
+                            isFieldRotated && "rotate-180"
+                        )}>
+                            <Badge
+                                variant="default"
+                                className={cn(
+                                    "text-[10px] sm:text-xs",
+                                    isSelectingScore
+                                        ? "bg-green-600"
+                                        : isSelectingPass
+                                            ? "bg-purple-600"
+                                            : "bg-yellow-600"
+                                )}
+                            >
+                                {isSelectingScore ? 'SCORING' : isSelectingPass ? 'PASSING' : 'COLLECT'}
+                            </Badge>
+                            <span className="text-xs sm:text-sm font-medium truncate">
+                                {isSelectingScore
+                                    ? (disablePathDrawingTapOnly ? 'Tap where scored' : 'Tap/draw where scored')
+                                    : isSelectingPass
+                                        ? (disablePathDrawingTapOnly ? 'Tap where passed' : 'Tap/draw pass')
+                                        : (disablePathDrawingTapOnly ? 'Tap where collected' : 'Tap/draw collect')}
+                            </span>
+                            <Button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isSelectingScore) setIsSelectingScore(false);
+                                    if (isSelectingPass) setIsSelectingPass(false);
+                                    if (isSelectingCollect) setIsSelectingCollect(false);
+                                    resetDrawing();
+                                }}
+                                variant="ghost"
+                                size="sm"
+                                className="pointer-events-auto h-7 w-7 p-0 rounded-full"
+                            >
+                                ✕
+                            </Button>
+                        </Card>
+                    </div>
                 )}
-            >
+
                 {/* Field Background */}
                 <img
                     src={fieldImage}
@@ -949,6 +1339,7 @@ function AutoFieldMapContent({
                                         key={key}
                                         elementKey={key}
                                         element={FIELD_ELEMENTS[key]!}
+                                        hotkeyLabel={autoStartHotkeyMap[key]}
                                         isVisible={true}
                                         onClick={handleElementClick}
                                         alliance={alliance}
@@ -964,12 +1355,17 @@ function AutoFieldMapContent({
                                 {getVisibleElements('auto', currentZone).map(key => {
                                     const isPersistentStuck = !!stuckStarts[key];
                                     const isPopupActive = !!(pendingWaypoint || isSelectingScore || isSelectingPass || isSelectingCollect || selectedStartKey);
+                                    const displayElement =
+                                        key === 'hub' && actions.length > 0
+                                            ? { ...FIELD_ELEMENTS[key]!, name: 'Score' }
+                                            : FIELD_ELEMENTS[key]!;
 
                                     return (
                                         <FieldButton
                                             key={key}
                                             elementKey={key}
-                                            element={FIELD_ELEMENTS[key]!}
+                                            element={displayElement}
+                                            hotkeyLabel={autoElementHotkeys[key]}
                                             isVisible={true}
                                             onClick={handleElementClick}
                                             alliance={alliance}
@@ -986,62 +1382,22 @@ function AutoFieldMapContent({
                     </div>
                 )}
 
-                {/* Score Selection Overlay */}
-                {isSelectingScore && !pendingShotTypeWaypoint && (
-                    <div className={cn("absolute inset-0 z-30 flex items-end justify-center pb-4 pointer-events-none", isFieldRotated && "rotate-180")}>
-                        <Card className="pointer-events-auto bg-background/95 backdrop-blur-sm border-green-500/50 shadow-2xl py-2 px-3 flex flex-row items-center gap-4">
-                            <Badge variant="default" className="bg-green-600">SCORING MODE</Badge>
-                            <span className="text-sm font-medium">
-                                {disablePathDrawingTapOnly ? 'Tap where the robot scored' : 'Tap or draw where the robot scored'}
+                {/* Start Selection Guidance Overlay */}
+                {actions.length === 0 && !selectedStartKey && !pendingShotTypeWaypoint && (
+                    <div
+                        className="absolute left-1/2 z-20 -translate-x-1/2 pointer-events-none"
+                        style={{ top: `${Math.max(4, ZONE_BOUNDS.neutralZone.yMin * 100 + 2)}%` }}
+                    >
+                        <Card className={cn(
+                            "pointer-events-none bg-background/95 backdrop-blur-sm shadow-2xl py-1 px-2 sm:py-1.5 sm:px-2.5 flex flex-row items-center gap-2 max-w-[72vw] sm:max-w-[58vw]",
+                            isFieldRotated && "rotate-180"
+                        )}>
+                            <Badge variant="default" className="bg-blue-600 text-[9px] sm:text-[10px] px-1.5 py-0.5">
+                                START POSITION
+                            </Badge>
+                            <span className="text-[11px] sm:text-xs font-medium truncate">
+                                Select start location
                             </span>
-                            <Button
-                                onClick={(e) => { e.stopPropagation(); setIsSelectingScore(false); resetDrawing(); }}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-full"
-                            >
-                                ✕
-                            </Button>
-                        </Card>
-                    </div>
-                )}
-
-                {/* Pass Selection Overlay */}
-                {isSelectingPass && !pendingShotTypeWaypoint && (
-                    <div className={cn("absolute inset-0 z-30 flex items-end justify-center pb-4 pointer-events-none", isFieldRotated && "rotate-180")}>
-                        <Card className="pointer-events-auto bg-background/95 backdrop-blur-sm border-purple-500/50 shadow-2xl py-2 px-3 flex flex-row items-center gap-4">
-                            <Badge variant="default" className="bg-purple-600">PASSING MODE</Badge>
-                            <span className="text-sm font-medium">
-                                {disablePathDrawingTapOnly ? 'Tap where the robot passed from' : 'Tap or draw where the robot passed from'}
-                            </span>
-                            <Button
-                                onClick={(e) => { e.stopPropagation(); setIsSelectingPass(false); resetDrawing(); }}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-full"
-                            >
-                                ✕
-                            </Button>
-                        </Card>
-                    </div>
-                )}
-
-                {/* Collect Selection Overlay */}
-                {isSelectingCollect && !pendingShotTypeWaypoint && (
-                    <div className={cn("absolute inset-0 z-30 flex items-end justify-center pb-4 pointer-events-none", isFieldRotated && "rotate-180")}>
-                        <Card className="pointer-events-auto bg-background/95 backdrop-blur-sm border-yellow-500/50 shadow-2xl py-2 px-3 flex flex-row items-center gap-4">
-                            <Badge variant="default" className="bg-yellow-600">COLLECT MODE</Badge>
-                            <span className="text-sm font-medium">
-                                {disablePathDrawingTapOnly ? 'Tap where the robot collected' : 'Tap or draw where the robot collected'}
-                            </span>
-                            <Button
-                                onClick={(e) => { e.stopPropagation(); setIsSelectingCollect(false); resetDrawing(); }}
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 rounded-full"
-                            >
-                                ✕
-                            </Button>
                         </Card>
                     </div>
                 )}
@@ -1114,6 +1470,7 @@ function AutoFieldMapContent({
                         climbWithLocation={true}
                         climbLocation={climbLocation}
                         onClimbLocationSelect={setClimbLocation}
+                        focusClimbTimeInputOnOpen={focusClimbTimeInputOnOpen}
                         allowClimbFail={!recordingMode}
                         skipClimbOutcomeSelection={recordingMode}
                         onConfirm={(selectedClimbStartTimeSecRemaining) => {
@@ -1146,6 +1503,7 @@ function AutoFieldMapContent({
                             };
                             onAddAction(finalized);
                             setPendingWaypoint(null);
+                            setFocusClimbTimeInputOnOpen(false);
                             setAccumulatedFuel(0);
                             setFuelHistory([]);
                             setClimbResult(null);
@@ -1165,10 +1523,9 @@ function AutoFieldMapContent({
                         }}
                     />
                 )}
-
-
-
+                </div>
             </div>
+
         </div>
     );
 

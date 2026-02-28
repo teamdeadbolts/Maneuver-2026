@@ -13,6 +13,8 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Button } from '@/core/components/ui/button';
+import { Badge } from '@/core/components/ui/badge';
+import { Card } from '@/core/components/ui/card';
 import { cn } from '@/core/lib/utils';
 import { loadPitScoutingByTeamAndEvent } from '@/core/db/database';
 
@@ -181,6 +183,7 @@ function TeleopFieldMapContent() {
     const [robotCapacity, setRobotCapacity] = useState<number | undefined>();
     const [actionLogOpen, setActionLogOpen] = useState(false);
     const [pendingShotTypeWaypoint, setPendingShotTypeWaypoint] = useState<PathWaypoint | null>(null);
+    const [focusClimbTimeInputOnOpen, setFocusClimbTimeInputOnOpen] = useState(false);
 
     // Broken down state - persisted with localStorage
     const [brokenDownStart, setBrokenDownStart] = useState<number | null>(() => {
@@ -388,7 +391,7 @@ function TeleopFieldMapContent() {
         setPendingShotTypeWaypoint(null);
     };
 
-    const handleElementClick = (elementKey: string) => {
+    const handleElementClick = useCallback((elementKey: string) => {
         // Block if popup active or broken down
         if (pendingWaypoint || pendingShotTypeWaypoint || isSelectingScore || isSelectingPass || isBrokenDown) return;
 
@@ -452,6 +455,7 @@ function TeleopFieldMapContent() {
                 break;
             case 'tower':
                 // Open climb selector
+                setFocusClimbTimeInputOnOpen(false);
                 setPendingWaypoint({
                     id: generateId(),
                     type: 'climb',
@@ -487,7 +491,24 @@ function TeleopFieldMapContent() {
                 } as any);
                 break;
         }
-    };
+    }, [
+        generateId,
+        isBrokenDown,
+        isSelectingPass,
+        isSelectingScore,
+        onAddAction,
+        pendingShotTypeWaypoint,
+        pendingWaypoint,
+        setClimbLevel,
+        setClimbLocation,
+        setClimbResult,
+        setFocusClimbTimeInputOnOpen,
+        setIsSelectingPass,
+        setIsSelectingScore,
+        setPendingWaypoint,
+        setStuckStarts,
+        stuckStarts,
+    ]);
 
     const handleFuelSelect = (amount: number) => {
         setAccumulatedFuel(prev => prev + amount);
@@ -549,6 +570,354 @@ function TeleopFieldMapContent() {
     // Use shared zone element config
     const visibleElements = getVisibleElements('teleop', activeZone);
 
+    const getTeleopHotkeyLabel = (elementKey: string): string | undefined => {
+        if (elementKey === 'hub') return 'S';
+        if (elementKey === 'pass' || elementKey === 'pass_alliance' || elementKey === 'pass_opponent') return 'A';
+        if (elementKey === 'tower') return 'F';
+        if (elementKey === 'defense_alliance' || elementKey === 'defense_neutral' || elementKey === 'defense_opponent') return 'D';
+        if (elementKey === 'steal') return 'S';
+
+        const allianceTraversalMap: Record<string, string> = isFieldRotated
+            ? { trench1: '1', bump1: '2', bump2: '3', trench2: '4' }
+            : { trench1: '4', bump1: '3', bump2: '2', trench2: '1' };
+        const opponentTraversalMap: Record<string, string> = isFieldRotated
+            ? { trench_opponent1: 'Q', bump_opponent1: 'W', bump_opponent2: 'E', trench_opponent2: 'R' }
+            : { trench_opponent1: 'R', bump_opponent1: 'E', bump_opponent2: 'W', trench_opponent2: 'Q' };
+
+        return allianceTraversalMap[elementKey] || opponentTraversalMap[elementKey];
+    };
+
+    const handleProceedToEndgame = useCallback(() => {
+        // Capture any active stuck timers before proceeding
+        const stuckEntries = Object.entries(stuckStarts);
+        const finalActions = [...actions];
+        const now = Date.now();
+
+        for (const [elementKey, startTime] of stuckEntries) {
+            if (startTime && typeof startTime === 'number') {
+                const obstacleType = elementKey.includes('trench') ? 'trench' : 'bump';
+                const element = FIELD_ELEMENTS[elementKey];
+                const duration = Math.min(now - startTime, TELEOP_PHASE_DURATION_MS);
+
+                const unstuckWaypoint: PathWaypoint = {
+                    id: generateId(),
+                    type: 'unstuck',
+                    action: `unstuck-${obstacleType}`,
+                    position: element ? { x: element.x, y: element.y } : { x: 0, y: 0 },
+                    timestamp: now,
+                    duration,
+                    obstacleType: obstacleType as 'trench' | 'bump',
+                    amountLabel: formatDurationSecondsLabel(duration),
+                };
+
+                finalActions.push(unstuckWaypoint);
+            }
+        }
+
+        if (stuckEntries.length > 0) {
+            setStuckStarts({});
+        }
+
+        // Capture any active broken down time before proceeding
+        if (brokenDownStart) {
+            const duration = Date.now() - brokenDownStart;
+            const finalTotal = totalBrokenDownTime + duration;
+            localStorage.setItem('teleopBrokenDownTime', String(finalTotal));
+        }
+
+        if (onProceed) onProceed(finalActions);
+    }, [
+        actions,
+        brokenDownStart,
+        generateId,
+        onProceed,
+        setStuckStarts,
+        stuckStarts,
+        totalBrokenDownTime,
+    ]);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            const key = event.key.toLowerCase();
+            const target = event.target as HTMLElement | null;
+            const isEditableTarget =
+                !!target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+
+            if (isEditableTarget) return;
+
+            if (key === 'escape') {
+                event.preventDefault();
+                if (pendingShotTypeWaypoint) {
+                    setPendingShotTypeWaypoint(null);
+                    setPendingWaypoint(null);
+                    resetDrawing();
+                    return;
+                }
+
+                if (pendingWaypoint) {
+                    if (pendingWaypoint.type === 'climb') {
+                        setPendingWaypoint(null);
+                        setClimbLevel(undefined);
+                        setClimbLocation(undefined);
+                    } else {
+                        setPendingWaypoint(null);
+                        setAccumulatedFuel(0);
+                        setFuelHistory([]);
+                        setIsSelectingScore(false);
+                        setIsSelectingPass(false);
+                        resetDrawing();
+                    }
+                    return;
+                }
+
+                if (isSelectingScore) {
+                    setIsSelectingScore(false);
+                    resetDrawing();
+                    return;
+                }
+
+                if (isSelectingPass) {
+                    setIsSelectingPass(false);
+                    resetDrawing();
+                }
+                return;
+            }
+
+            if (key === 'c') {
+                event.preventDefault();
+                if (isFieldRotated) {
+                    if (activeZone === 'opponentZone') setActiveZone('neutralZone');
+                    else if (activeZone === 'neutralZone') setActiveZone('allianceZone');
+                    else setActiveZone('allianceZone');
+                } else {
+                    if (activeZone === 'allianceZone') setActiveZone('neutralZone');
+                    else if (activeZone === 'neutralZone') setActiveZone('opponentZone');
+                    else setActiveZone('opponentZone');
+                }
+                return;
+            }
+
+            if (key === 'v') {
+                event.preventDefault();
+                if (isFieldRotated) {
+                    if (activeZone === 'allianceZone') setActiveZone('neutralZone');
+                    else if (activeZone === 'neutralZone') setActiveZone('opponentZone');
+                    else setActiveZone('opponentZone');
+                } else {
+                    if (activeZone === 'opponentZone') setActiveZone('neutralZone');
+                    else if (activeZone === 'neutralZone') setActiveZone('allianceZone');
+                    else setActiveZone('allianceZone');
+                }
+                return;
+            }
+
+            if (pendingWaypoint || pendingShotTypeWaypoint) return;
+
+            const allianceStuckKeyMap: Record<string, string> = isFieldRotated
+                ? {
+                    '1': 'trench1',
+                    '2': 'bump1',
+                    '3': 'bump2',
+                    '4': 'trench2',
+                }
+                : {
+                    '1': 'trench2',
+                    '2': 'bump2',
+                    '3': 'bump1',
+                    '4': 'trench1',
+                };
+            const opponentStuckKeyMap: Record<string, string> = isFieldRotated
+                ? {
+                    q: 'trench_opponent1',
+                    w: 'bump_opponent1',
+                    e: 'bump_opponent2',
+                    r: 'trench_opponent2',
+                }
+                : {
+                    q: 'trench_opponent2',
+                    w: 'bump_opponent2',
+                    e: 'bump_opponent1',
+                    r: 'trench_opponent1',
+                };
+
+            const visibleElementSet = new Set<string>(visibleElements);
+
+            const canUseAllianceTraversalHotkeys =
+                visibleElementSet.has('trench1') ||
+                visibleElementSet.has('bump1') ||
+                visibleElementSet.has('bump2') ||
+                visibleElementSet.has('trench2');
+            const canUseOpponentTraversalHotkeys =
+                visibleElementSet.has('trench_opponent1') ||
+                visibleElementSet.has('bump_opponent1') ||
+                visibleElementSet.has('bump_opponent2') ||
+                visibleElementSet.has('trench_opponent2');
+
+            if (canUseAllianceTraversalHotkeys) {
+                const allianceTraversalElementKey = allianceStuckKeyMap[key];
+                if (allianceTraversalElementKey) {
+                    event.preventDefault();
+                    handleElementClick(allianceTraversalElementKey);
+                    return;
+                }
+            }
+
+            if (canUseOpponentTraversalHotkeys) {
+                const opponentTraversalElementKey = opponentStuckKeyMap[key];
+                if (opponentTraversalElementKey) {
+                    event.preventDefault();
+                    handleElementClick(opponentTraversalElementKey);
+                    return;
+                }
+            }
+
+            if (key === 'z') {
+                event.preventDefault();
+                if (brokenDownStart) {
+                    setBrokenDownStart(null);
+                }
+                if (onUndo) {
+                    onUndo();
+                }
+                return;
+            }
+
+            if (key === 'x') {
+                event.preventDefault();
+                if (brokenDownStart) {
+                    const duration = Date.now() - brokenDownStart;
+                    const newTotal = totalBrokenDownTime + duration;
+                    setTotalBrokenDownTime(newTotal);
+                    localStorage.setItem('teleopBrokenDownTime', String(newTotal));
+                    setBrokenDownStart(null);
+                    localStorage.removeItem('teleopBrokenDownStart');
+                } else {
+                    const now = Date.now();
+                    setBrokenDownStart(now);
+                    localStorage.setItem('teleopBrokenDownStart', String(now));
+                }
+                return;
+            }
+
+            if (key === 'enter') {
+                event.preventDefault();
+                handleProceedToEndgame();
+                return;
+            }
+
+            const isBusyWithSelection = isSelectingScore || isSelectingPass || isAnyStuck || isBrokenDown;
+            if (isBusyWithSelection) return;
+
+            const canPassFromZone =
+                visibleElementSet.has('pass') ||
+                visibleElementSet.has('pass_alliance') ||
+                visibleElementSet.has('pass_opponent');
+            const canScoreFromZone = visibleElementSet.has('hub');
+            const canStealFromZone = visibleElementSet.has('steal');
+            const canDefenseFromZone =
+                visibleElementSet.has('defense_alliance') ||
+                visibleElementSet.has('defense_neutral') ||
+                visibleElementSet.has('defense_opponent');
+            const canClimbFromZone = visibleElements.includes('tower');
+
+            if (key === 's') {
+                if (canStealFromZone) {
+                    event.preventDefault();
+                    onAddAction({
+                        id: generateId(),
+                        type: 'steal',
+                        timestamp: Date.now(),
+                    } as any);
+                    return;
+                }
+
+                if (!canScoreFromZone) return;
+
+                event.preventDefault();
+                setIsSelectingScore(true);
+                return;
+            }
+
+            if (key === 'a') {
+                if (!canPassFromZone) return;
+                event.preventDefault();
+                setIsSelectingPass(true);
+                return;
+            }
+
+            if (key === 'f') {
+                if (!canClimbFromZone) return;
+                event.preventDefault();
+                const towerElement = FIELD_ELEMENTS.tower;
+                if (!towerElement) return;
+                setFocusClimbTimeInputOnOpen(true);
+                setPendingWaypoint({
+                    id: generateId(),
+                    type: 'climb',
+                    action: 'attempt',
+                    position: { x: towerElement!.x, y: towerElement!.y },
+                    timestamp: Date.now(),
+                    zone: 'allianceZone',
+                });
+                setClimbLevel(undefined);
+                setClimbLocation(undefined);
+                setClimbResult('success');
+                return;
+            }
+
+            if (key === 'd') {
+                if (!canDefenseFromZone) return;
+                event.preventDefault();
+                onAddAction({
+                    id: generateId(),
+                    type: 'defense',
+                    timestamp: Date.now(),
+                } as any);
+                return;
+            }
+
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [
+        activeZone,
+        brokenDownStart,
+        generateId,
+        handleElementClick,
+        handleProceedToEndgame,
+        isFieldRotated,
+        isAnyStuck,
+        isBrokenDown,
+        isSelectingPass,
+        isSelectingScore,
+        onAddAction,
+        onUndo,
+        pendingShotTypeWaypoint,
+        pendingWaypoint,
+        resetDrawing,
+        setAccumulatedFuel,
+        setActiveZone,
+        setBrokenDownStart,
+        setClimbLevel,
+        setClimbLocation,
+        setClimbResult,
+        setFuelHistory,
+        setFocusClimbTimeInputOnOpen,
+        setIsSelectingPass,
+        setIsSelectingScore,
+        setPendingWaypoint,
+        setTotalBrokenDownTime,
+        totalBrokenDownTime,
+        visibleElements,
+    ]);
+
+    useEffect(() => {
+        if (!pendingWaypoint || pendingWaypoint.type !== 'climb') {
+            setFocusClimbTimeInputOnOpen(false);
+        }
+    }, [pendingWaypoint]);
+
     // ==========================================================================
     // RENDER
     // ==========================================================================
@@ -575,45 +944,7 @@ function TeleopFieldMapContent() {
                 canUndo={canUndo}
                 onUndo={handleUndoWrapper}
                 onBack={onBack}
-                onProceed={() => {
-                    // Capture any active stuck timers before proceeding
-                    const stuckEntries = Object.entries(stuckStarts);
-                    const finalActions = [...actions];
-                    const now = Date.now();
-
-                    for (const [elementKey, startTime] of stuckEntries) {
-                        if (startTime && typeof startTime === 'number') {
-                            const obstacleType = elementKey.includes('trench') ? 'trench' : 'bump';
-                            const element = FIELD_ELEMENTS[elementKey];
-                            const duration = Math.min(now - startTime, TELEOP_PHASE_DURATION_MS);
-
-                            const unstuckWaypoint: PathWaypoint = {
-                                id: generateId(),
-                                type: 'unstuck',
-                                action: `unstuck-${obstacleType}`,
-                                position: element ? { x: element.x, y: element.y } : { x: 0, y: 0 },
-                                timestamp: now,
-                                duration,
-                                obstacleType: obstacleType as 'trench' | 'bump',
-                                amountLabel: formatDurationSecondsLabel(duration),
-                            };
-
-                            finalActions.push(unstuckWaypoint);
-                        }
-                    }
-
-                    if (stuckEntries.length > 0) {
-                        setStuckStarts({});
-                    }
-
-                    // Capture any active broken down time before proceeding
-                    if (brokenDownStart) {
-                        const duration = Date.now() - brokenDownStart;
-                        const finalTotal = totalBrokenDownTime + duration;
-                        localStorage.setItem('teleopBrokenDownTime', String(finalTotal));
-                    }
-                    if (onProceed) onProceed(finalActions);
-                }}
+                onProceed={handleProceedToEndgame}
                 toggleFieldOrientation={toggleFieldOrientation}
                 isBrokenDown={isBrokenDown}
                 onBrokenDownToggle={handleBrokenDownToggle}
@@ -697,11 +1028,18 @@ function TeleopFieldMapContent() {
                                 let element = FIELD_ELEMENTS[key];
                                 if (!element) return null;
 
+                                if (key === 'hub') {
+                                    element = {
+                                        ...element,
+                                        name: 'Score',
+                                    };
+                                }
+
                                 // Override obstacle elements to always say "Stuck" in Teleop
                                 if (key.includes('trench') || key.includes('bump')) {
                                     element = {
                                         ...element,
-                                        name: 'Stuck'
+                                        name: 'Stuck?'
                                     };
                                 }
 
@@ -718,6 +1056,7 @@ function TeleopFieldMapContent() {
                                         key={key}
                                         elementKey={key}
                                         element={element}
+                                        hotkeyLabel={getTeleopHotkeyLabel(key)}
                                         isVisible={true}
                                         isDisabled={isAnyStuck && !stuckStarts[key]}
                                         isStuck={!!stuckStarts[key]}
@@ -734,27 +1073,42 @@ function TeleopFieldMapContent() {
 
                     {/* Score/Pass Mode Overlay */}
                     {!pendingShotTypeWaypoint && (isSelectingScore || isSelectingPass) && (
-                        <div className={cn(
-                            "absolute inset-x-0 top-0 z-20 flex items-center justify-center p-2",
-                            "bg-gradient-to-b from-slate-900/90 to-transparent",
-                            isFieldRotated && "bottom-0 top-auto rotate-180 bg-gradient-to-t"
-                        )}>
-                            <div className={cn(
-                                "px-3 py-1.5 rounded-full font-bold text-sm",
-                                isSelectingScore ? "bg-green-600/90 text-white" : "bg-purple-600/90 text-white"
+                        <div
+                            className={cn(
+                                "absolute inset-x-0 top-1 z-20 flex pointer-events-none justify-center px-2",
+                                isFieldRotated && "bottom-1 top-auto"
+                            )}
+                        >
+                            <Card className={cn(
+                                "pointer-events-none bg-background/70 backdrop-blur-sm shadow-2xl py-1 px-2 sm:py-2 sm:px-3 flex flex-row items-center gap-2 sm:gap-3 max-w-[68%]",
+                                isFieldRotated && "rotate-180"
                             )}>
-                                {isSelectingScore
-                                    ? (disablePathDrawingTapOnly ? 'Tap where robot scored' : 'Tap or draw to shoot')
-                                    : (disablePathDrawingTapOnly ? 'Tap where robot passed' : 'Tap or draw pass path')}
-                            </div>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleFuelCancel}
-                                className="ml-2 text-red-400 hover:text-red-300"
-                            >
-                                Cancel
-                            </Button>
+                                <Badge
+                                    variant="default"
+                                    className={cn(
+                                        "text-[10px] sm:text-xs",
+                                        isSelectingScore ? "bg-green-600" : "bg-purple-600"
+                                    )}
+                                >
+                                    {isSelectingScore ? 'SCORING' : 'PASSING'}
+                                </Badge>
+                                <span className="text-xs sm:text-sm font-medium truncate">
+                                    {isSelectingScore
+                                        ? (disablePathDrawingTapOnly ? 'Tap where robot scored' : 'Tap or draw to shoot')
+                                        : (disablePathDrawingTapOnly ? 'Tap where robot passed' : 'Tap or draw pass path')}
+                                </span>
+                                <Button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleFuelCancel();
+                                    }}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="pointer-events-auto h-7 w-7 p-0 rounded-full"
+                                >
+                                    ✕
+                                </Button>
+                            </Card>
                         </div>
                     )}
 
@@ -776,6 +1130,7 @@ function TeleopFieldMapContent() {
                             onClimbLevelSelect={(level) => setClimbLevel(level)}
                             climbLocation={climbLocation}
                             onClimbLocationSelect={(location) => setClimbLocation(location)}
+                            focusClimbTimeInputOnOpen={focusClimbTimeInputOnOpen}
                             onConfirm={pendingWaypoint.type === 'climb' ? (selectedClimbStartTimeSecRemaining) => {
                                 if (climbLevel && climbLocation && climbResult) {
                                     const waypoint: PathWaypoint = {
@@ -789,6 +1144,7 @@ function TeleopFieldMapContent() {
                                     };
                                     onAddAction(waypoint);
                                     setPendingWaypoint(null);
+                                    setFocusClimbTimeInputOnOpen(false);
                                     setClimbLevel(undefined);
                                     setClimbLocation(undefined);
                                     setClimbResult('success');

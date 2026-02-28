@@ -34,6 +34,7 @@ const ICON_MAP: Record<string, { icon: React.ElementType; className: string }> =
 export function FieldButton({
     elementKey,
     element,
+    hotkeyLabel,
     isVisible,
     isDisabled = false,
     isStuck = false,
@@ -137,7 +138,7 @@ export function FieldButton({
                             className="text-slate-300 font-medium leading-none mt-0.5"
                             style={{ fontSize: `${labelSize}px` }}
                         >
-                            {element.name}
+                            {hotkeyLabel ? `${element.name} (${hotkeyLabel})` : element.name}
                         </span>
                     </>
                 )}

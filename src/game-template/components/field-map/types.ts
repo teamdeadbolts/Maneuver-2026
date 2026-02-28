@@ -101,6 +101,7 @@ export interface FieldCanvasProps {
 export interface FieldButtonProps {
     elementKey: string;
     element: FieldElement;
+    hotkeyLabel?: string;
     isVisible: boolean;
     isDisabled?: boolean;
     isStuck?: boolean;
